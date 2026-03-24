@@ -134,18 +134,20 @@ export default function EditorPage() {
     const oficio = await res.json();
     setModoEdicao(true);
     setOficioId(id);
+    setNumeroOficio(oficio.numero);
     setTemplateId(oficio.templateId?.toString() || "");
     setDestinatarioId(oficio.destinatarioId?.toString() || "");
     setAssunto(oficio.assunto);
     setReduzido(oficio.reduzido || "");
     setValorEstimado(oficio.valorEstimado || "");
     if (oficio.classificacao) setClassificacao(oficio.classificacao);
-    // Mantém o conteúdo como está — o usuário adiciona páginas manualmente se necessário
-setPaginas([oficio.conteudo || ""]);
-setTimeout(() => {
-  const ref = paginaRefs.current[0];
-  if (ref) ref.innerHTML = oficio.conteudo || "";
-}, 200);
+    const conteudo = oficio.conteudo || "";
+    setPaginas([conteudo]);
+    // Força atualização do DOM após render
+    setTimeout(() => {
+      const ref = paginaRefs.current[0];
+      if (ref) ref.innerHTML = conteudo;
+    }, 300);
     const template = templates.find((t) => t.id === oficio.templateId);
     if (template) setUsaClassificacao(template.usaClassificacao);
   }
@@ -155,7 +157,13 @@ setTimeout(() => {
     const template = templates.find((t) => t.id === Number(id));
     if (!template) return;
     setUsaClassificacao(template.usaClassificacao);
-    if (template.conteudo) setPaginas([template.conteudo]);
+    if (template.conteudo) {
+      setPaginas([template.conteudo]);
+      setTimeout(() => {
+        const ref = paginaRefs.current[0];
+        if (ref) ref.innerHTML = template.conteudo;
+      }, 100);
+    }
     if (!template.usaClassificacao) { setClassificacao(null); setReduzido(""); }
   }
 
@@ -212,6 +220,41 @@ setTimeout(() => {
     }
   }
 
+  function imprimir() {
+    const pagEls = Array.from(document.querySelectorAll(".pagina-a4")) as HTMLElement[];
+    const paginasComConteudo = pagEls.filter((el) => {
+      const editavel = el.querySelector("[contenteditable]") as HTMLElement;
+      return !editavel || editavel.innerText.trim() !== "";
+    });
+    const htmlPaginas = paginasComConteudo.map((el) => el.outerHTML).join("");
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.left = "-9999px";
+    iframe.style.width = "794px";
+    iframe.style.height = "1123px";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><style>
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body { margin: 0; padding: 0; background: white; }
+      @page { margin: 0; size: A4 portrait; }
+      .pagina-a4 {
+        width: 794px; height: 1123px; box-sizing: border-box;
+        page-break-after: always; overflow: hidden;
+        display: flex; flex-direction: column;
+        padding: 76px 57px 76px 114px;
+      }
+      .pagina-a4:last-child { page-break-after: auto; }
+    </style></head><body>${htmlPaginas}</body></html>`);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow!.focus();
+      iframe.contentWindow!.print();
+      setTimeout(() => document.body.removeChild(iframe), 2000);
+    }, 500);
+  }
+
   async function salvarRascunho() {
     if (!assunto.trim()) { alert("Informe o assunto."); return; }
     const conteudo = getConteudoCompleto();
@@ -254,51 +297,6 @@ setTimeout(() => {
         status: "emitido",
       };
       let res;
-
-      function imprimir() {
-    const pagEls = Array.from(document.querySelectorAll(".pagina-a4")) as HTMLElement[];
-    
-    const paginasComConteudo = pagEls.filter((el) => {
-      const editavel = el.querySelector("[contenteditable]") as HTMLElement;
-      return !editavel || editavel.innerText.trim() !== "";
-    });
-
-    const htmlPaginas = paginasComConteudo.map((el) => el.outerHTML).join("");
-
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.left = "-9999px";
-    iframe.style.width = "794px";
-    iframe.style.height = "1123px";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(`<!DOCTYPE html><html><head><style>
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      html, body { margin: 0; padding: 0; background: white; }
-      @page { margin: 0; size: A4 portrait; }
-      .pagina-a4 {
-        width: 794px;
-        height: 1123px;
-        box-sizing: border-box;
-        page-break-after: always;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        padding: 76px 57px 76px 114px;
-      }
-      .pagina-a4:last-child { page-break-after: auto; }
-    </style></head><body>${htmlPaginas}</body></html>`);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow!.focus();
-      iframe.contentWindow!.print();
-      setTimeout(() => document.body.removeChild(iframe), 2000);
-    }, 500);
-  }
-
       if (modoEdicao && oficioId) {
         res = await fetch(`/api/oficios/${oficioId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       } else {
@@ -315,18 +313,13 @@ setTimeout(() => {
       for (let i = 0; i < pagEls.length; i++) {
         if (i > 0) pdf.addPage();
         const canvas = await html2canvas(pagEls[i] as HTMLElement, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#fff",
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-          windowWidth: PAGE_WIDTH,
+          scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#fff",
+          width: PAGE_WIDTH, height: PAGE_HEIGHT, windowWidth: PAGE_WIDTH,
         });
         pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfW, pdfH);
       }
 
-      const numeroFinal = proximoNumero.replace(/\//g, "-");
+      const numeroFinal = (modoEdicao ? numeroOficio : proximoNumero).replace(/\//g, "-");
       pdf.save(`Oficio_${numeroFinal}.pdf`);
     } catch { alert("Erro ao gerar PDF."); }
     finally { setGerando(false); }
@@ -334,54 +327,8 @@ setTimeout(() => {
 
   if (status === "loading") return null;
 
-  function imprimir() {
-    const pagEls = Array.from(document.querySelectorAll(".pagina-a4")) as HTMLElement[];
-    
-    const paginasComConteudo = pagEls.filter((el) => {
-      const editavel = el.querySelector("[contenteditable]") as HTMLElement;
-      return !editavel || editavel.innerText.trim() !== "";
-    });
-
-    const htmlPaginas = paginasComConteudo.map((el) => el.outerHTML).join("");
-
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.left = "-9999px";
-    iframe.style.width = "794px";
-    iframe.style.height = "1123px";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(`<!DOCTYPE html><html><head><style>
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      html, body { margin: 0; padding: 0; background: white; }
-      @page { margin: 0; size: A4 portrait; }
-      .pagina-a4 {
-        width: 794px;
-        height: 1123px;
-        box-sizing: border-box;
-        page-break-after: always;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        padding: 76px 57px 76px 114px;
-      }
-      .pagina-a4:last-child { page-break-after: auto; }
-    </style></head><body>${htmlPaginas}</body></html>`);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow!.focus();
-      iframe.contentWindow!.print();
-      setTimeout(() => document.body.removeChild(iframe), 2000);
-    }, 500);
-  }
-
-  if (status === "loading") return null;
-
   const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
- const numeroExibido = modoEdicao ? numeroOficio : proximoNumero;
+  const numeroExibido = modoEdicao ? numeroOficio : proximoNumero;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F0F4F8" }}>
@@ -391,22 +338,10 @@ setTimeout(() => {
       {/* Barra de ferramentas */}
       <div
         className="barra-ferramentas"
-        style={{
-          background: "#fff",
-          borderBottom: "2px solid #E0E7EF",
-          padding: "8px 24px",
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-          flexWrap: "wrap",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        }}
+        style={{ background: "#fff", borderBottom: "2px solid #E0E7EF", padding: "8px 24px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <span style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", marginRight: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {modoEdicao ? "Editando" : numeroExibido}
+          {modoEdicao ? `Editando: ${numeroExibido}` : numeroExibido}
         </span>
 
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("bold"); }} style={{ fontWeight: "700", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>B</button>
@@ -492,7 +427,7 @@ setTimeout(() => {
 
           <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #DDE3EC", padding: "16px" }}>
             <p style={{ fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", margin: "0 0 8px" }}>
-            {paginas.length} página{paginas.length > 1 ? "s" : ""}
+              {paginas.length} página{paginas.length > 1 ? "s" : ""}
             </p>
             <button onClick={() => setPaginas([...paginas, ""])} style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}>+ Adicionar Página</button>
             {paginas.length > 1 && (
@@ -503,15 +438,15 @@ setTimeout(() => {
 
         {/* Área de páginas A4 */}
         <div className="area-paginas" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
-         {paginas.map((conteudoPagina, index) => (
-  <div
-    key={index}
-    className={
-      index > 0 && conteudoPagina.replace(/<[^>]*>/g, "").trim() === ""
-        ? "pagina-wrapper pagina-wrapper-vazio"
-        : "pagina-wrapper"
-    }
-  >
+          {paginas.map((conteudoPagina, index) => (
+            <div
+              key={index}
+              className={
+                index > 0 && (typeof conteudoPagina === "string" ? conteudoPagina : "").replace(/<[^>]*>/g, "").trim() === ""
+                  ? "pagina-wrapper pagina-wrapper-vazio"
+                  : "pagina-wrapper"
+              }
+            >
               {index > 0 && (
                 <div className="separador-pagina" style={{ textAlign: "center", fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", marginBottom: "8px" }}>
                   — Página {index + 1} —
@@ -563,16 +498,17 @@ setTimeout(() => {
                   </div>
                 )}
 
-                ref={(el) => {
-  paginaRefs.current[index] = el;
-  if (el && !el.matches(":focus")) {
-    const conteudo = typeof conteudoPagina === "string" ? conteudoPagina : "";
-    if (el.innerHTML !== conteudo) {
-      el.innerHTML = conteudo;
-    }
-  }
-}}
-                contentEditable
+                <div
+                  ref={(el) => {
+                    paginaRefs.current[index] = el;
+                    if (el && !el.matches(":focus")) {
+                      const conteudo = typeof conteudoPagina === "string" ? conteudoPagina : "";
+                      if (el.innerHTML !== conteudo) {
+                        el.innerHTML = conteudo;
+                      }
+                    }
+                  }}
+                  contentEditable
                   suppressContentEditableWarning
                   onInput={(e) => handleInput(index, (e.target as HTMLDivElement).innerHTML)}
                   style={{
