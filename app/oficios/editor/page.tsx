@@ -566,10 +566,13 @@ setTimeout(() => {
                 ref={(el) => {
   paginaRefs.current[index] = el;
   if (el && !el.matches(":focus")) {
-    el.innerHTML = conteudoPagina || "";
+    const conteudo = typeof conteudoPagina === "string" ? conteudoPagina : "";
+    if (el.innerHTML !== conteudo) {
+      el.innerHTML = conteudo;
+    }
   }
 }}
-                  contentEditable
+                contentEditable
                   suppressContentEditableWarning
                   onInput={(e) => handleInput(index, (e.target as HTMLDivElement).innerHTML)}
                   style={{
