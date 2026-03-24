@@ -89,6 +89,7 @@ export default function EditorPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [destinatarios, setDestinatarios] = useState<Destinatario[]>([]);
   const [proximoNumero, setProximoNumero] = useState("");
+  const [numeroOficio, setNumeroOficio] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [destinatarioId, setDestinatarioId] = useState("");
   const [assunto, setAssunto] = useState("");
@@ -139,7 +140,12 @@ export default function EditorPage() {
     setReduzido(oficio.reduzido || "");
     setValorEstimado(oficio.valorEstimado || "");
     if (oficio.classificacao) setClassificacao(oficio.classificacao);
-    setPaginas([oficio.conteudo || ""]);
+    // Mantém o conteúdo como está — o usuário adiciona páginas manualmente se necessário
+setPaginas([oficio.conteudo || ""]);
+setTimeout(() => {
+  const ref = paginaRefs.current[0];
+  if (ref) ref.innerHTML = oficio.conteudo || "";
+}, 200);
     const template = templates.find((t) => t.id === oficio.templateId);
     if (template) setUsaClassificacao(template.usaClassificacao);
   }
@@ -375,7 +381,7 @@ export default function EditorPage() {
   if (status === "loading") return null;
 
   const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
-  const numeroExibido = modoEdicao ? "(editando)" : proximoNumero;
+ const numeroExibido = modoEdicao ? numeroOficio : proximoNumero;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F0F4F8" }}>
@@ -557,13 +563,12 @@ export default function EditorPage() {
                   </div>
                 )}
 
-                <div
-                  ref={(el) => {
-                    paginaRefs.current[index] = el;
-                    if (el && el.innerHTML !== conteudoPagina && !el.matches(":focus")) {
-                      el.innerHTML = conteudoPagina;
-                    }
-                  }}
+                ref={(el) => {
+  paginaRefs.current[index] = el;
+  if (el && !el.matches(":focus")) {
+    el.innerHTML = conteudoPagina || "";
+  }
+}}
                   contentEditable
                   suppressContentEditableWarning
                   onInput={(e) => handleInput(index, (e.target as HTMLDivElement).innerHTML)}
