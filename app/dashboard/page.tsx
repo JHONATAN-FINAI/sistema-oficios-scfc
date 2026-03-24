@@ -51,7 +51,7 @@ export default function DashboardPage() {
   ];
 
   const acoes = [
-    { label: "Novo Ofício", desc: "Criar um novo ofício", href: "/oficios/novo", cor: "#1565C0", icone: "✦" },
+    { label: "Novo Ofício", desc: "Criar um novo ofício", href: "/oficios/editor", cor: "#1565C0", icone: "✦" },
     { label: "Histórico", desc: "Consultar ofícios emitidos", href: "/oficios/historico", cor: "#0D3B7A", icone: "☰" },
     { label: "Destinatários", desc: "Gerenciar órgãos destinatários", href: "/destinatarios", cor: "#F57C00", icone: "◈" },
   ];
