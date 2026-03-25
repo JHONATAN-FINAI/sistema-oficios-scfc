@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -57,16 +57,7 @@ function Rodape() {
   );
 }
 
-// Componente de página editável — isolado para evitar re-renders
-function PaginaEditavel({
-  index,
-  conteudoInicial,
-  onChange,
-}: {
-  index: number;
-  conteudoInicial: string;
-  onChange: (index: number, html: string) => void;
-}) {
+function PaginaEditavel({ index, conteudoInicial, onChange }: { index: number; conteudoInicial: string; onChange: (index: number, html: string) => void; }) {
   const ref = useRef<HTMLDivElement>(null);
   const inicializado = useRef(false);
 
@@ -83,17 +74,7 @@ function PaginaEditavel({
       contentEditable
       suppressContentEditableWarning
       onInput={(e) => onChange(index, (e.target as HTMLDivElement).innerHTML)}
-      style={{
-        flex: 1,
-        outline: "none",
-        fontFamily: "Arial, sans-serif",
-        fontSize: "12pt",
-        lineHeight: "1.5",
-        color: "#000",
-        textAlign: "justify",
-        overflowY: "hidden",
-        minHeight: "50px",
-      }}
+      style={{ flex: 1, outline: "none", fontFamily: "Arial, sans-serif", fontSize: "12pt", lineHeight: "1.5", color: "#000", textAlign: "justify", overflowY: "hidden", minHeight: "50px" }}
     />
   );
 }
@@ -105,16 +86,10 @@ const estiloImpressao = `
     .barra-ferramentas, .painel-lateral, nav, .separador-pagina { display: none !important; }
     .area-paginas { all: unset !important; display: block !important; }
     .pagina-wrapper { display: block !important; }
-    .pagina-wrapper-vazio { display: none !important; }
     .pagina-a4 {
-      width: 794px !important;
-      height: 1123px !important;
-      box-shadow: none !important;
-      margin: 0 !important;
-      padding: 76px 57px 76px 114px !important;
-      page-break-after: always !important;
-      box-sizing: border-box !important;
-      overflow: hidden !important;
+      width: 794px !important; height: 1123px !important; box-shadow: none !important;
+      margin: 0 !important; padding: 76px 57px 76px 114px !important;
+      page-break-after: always !important; box-sizing: border-box !important; overflow: hidden !important;
     }
     .pagina-a4:last-child { page-break-after: auto !important; }
   }
@@ -124,8 +99,6 @@ const estiloImpressao = `
 export default function EditorPage() {
   const { status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const editId = searchParams.get("editar");
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [destinatarios, setDestinatarios] = useState<Destinatario[]>([]);
@@ -145,21 +118,18 @@ export default function EditorPage() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [oficioId, setOficioId] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(true);
-
-  // Conteúdo das páginas — cada item é o HTML inicial de uma página
   const [paginas, setPaginas] = useState<string[]>([""]);
-  // Ref para acessar o HTML atual de cada página
   const paginaConteudoRefs = useRef<string[]>([""]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
- useEffect(() => {
-  if (status === "authenticated") {
-    carregarDados();
-  }
-}, [status]);
+  useEffect(() => {
+    if (status === "authenticated") {
+      carregarDados();
+    }
+  }, [status]);
 
   async function carregarDados() {
     setCarregando(true);
@@ -173,13 +143,14 @@ export default function EditorPage() {
     setDestinatarios(dData);
     setProximoNumero(nData.numero);
 
-   const idParaEditar = new URLSearchParams(window.location.search).get("editar");
-if (idParaEditar) {
-  await carregarOficioParaEdicao(Number(idParaEditar), tData);
-} else {
-  setCarregando(false);
-}
-    
+    const idParaEditar = new URLSearchParams(window.location.search).get("editar");
+    if (idParaEditar) {
+      await carregarOficioParaEdicao(Number(idParaEditar), tData);
+    } else {
+      setCarregando(false);
+    }
+  }
+
   async function carregarOficioParaEdicao(id: number, tData: Template[]) {
     const res = await fetch(`/api/oficios/${id}`);
     if (!res.ok) { setCarregando(false); return; }
@@ -241,12 +212,9 @@ if (idParaEditar) {
   function inserirQuadro() {
     if (!classificacao) { setErroClassificacao("Busque a classificação antes de inserir."); return; }
     const quadro = `<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:10pt;"><tbody><tr><td colspan="2" style="background:#e8e8e8;font-weight:bold;padding:5px 8px;border:1px solid #000;text-align:center;">CLASSIFICAÇÃO ORÇAMENTÁRIA DA DESPESA</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;width:40%;font-weight:bold;">Órgão:</td><td style="border:1px solid #000;padding:3px 8px;">02 - Prefeitura Municipal de Rondonópolis</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Unidade:</td><td style="border:1px solid #000;padding:3px 8px;">15 - Secretaria Municipal de Administração</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Funcional Programática:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.funcional}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Elemento de Despesa:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.elemento}${classificacao.subelemento ? ` / ${classificacao.subelemento}` : ""}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Fonte:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.fonte}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Reduzido:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.reduzido}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Valor Estimado:</td><td style="border:1px solid #000;padding:3px 8px;">${valorEstimado || "_______________"}</td></tr><tr><td colspan="2" style="border:1px solid #000;padding:10px 8px;"><strong>ANÁLISE DA SECRETARIA DE FAZENDA EM:</strong> _____ / _____ / _______<br/><br/>&nbsp;&nbsp;&nbsp;□ DEFERIDO &nbsp;&nbsp; □ INDEFERIDO &nbsp;&nbsp; Nº RESERVA: _______________<br/><br/><div style="text-align:center;margin-top:8px;">________________________________________<br/>Secretaria Municipal de Fazenda</div></td></tr></tbody></table>`;
-
     const ultimaIdx = paginas.length - 1;
     const novoConteudo = paginaConteudoRefs.current[ultimaIdx] + quadro;
     paginaConteudoRefs.current[ultimaIdx] = novoConteudo;
-
-    // Força re-render da última página com novo conteúdo
     const novasPaginas = [...paginas];
     novasPaginas[ultimaIdx] = novoConteudo;
     setPaginas(novasPaginas);
@@ -289,12 +257,7 @@ if (idParaEditar) {
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       html, body { margin: 0; padding: 0; background: white; }
       @page { margin: 0; size: A4 portrait; }
-      .pagina-a4 {
-        width: 794px; height: 1123px; box-sizing: border-box;
-        page-break-after: always; overflow: hidden;
-        display: flex; flex-direction: column;
-        padding: 76px 57px 76px 114px;
-      }
+      .pagina-a4 { width: 794px; height: 1123px; box-sizing: border-box; page-break-after: always; overflow: hidden; display: flex; flex-direction: column; padding: 76px 57px 76px 114px; }
       .pagina-a4:last-child { page-break-after: auto; }
     </style></head><body>${htmlPaginas}</body></html>`);
     doc.close();
@@ -311,15 +274,7 @@ if (idParaEditar) {
     if (!conteudo.trim()) { alert("O conteúdo está vazio."); return; }
     setSalvando(true);
     try {
-      const payload = {
-        templateId: templateId ? Number(templateId) : null,
-        destinatarioId: destinatarioId ? Number(destinatarioId) : null,
-        assunto, conteudo,
-        reduzido: reduzido || null,
-        classificacao: classificacao || null,
-        valorEstimado: valorEstimado || null,
-        status: "rascunho",
-      };
+      const payload = { templateId: templateId ? Number(templateId) : null, destinatarioId: destinatarioId ? Number(destinatarioId) : null, assunto, conteudo, reduzido: reduzido || null, classificacao: classificacao || null, valorEstimado: valorEstimado || null, status: "rascunho" };
       let res;
       if (modoEdicao && oficioId) {
         res = await fetch(`/api/oficios/${oficioId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -337,15 +292,7 @@ if (idParaEditar) {
     setGerando(true);
     try {
       const conteudo = getConteudoCompleto();
-      const payload = {
-        templateId: templateId ? Number(templateId) : null,
-        destinatarioId: destinatarioId ? Number(destinatarioId) : null,
-        assunto, conteudo,
-        reduzido: reduzido || null,
-        classificacao: classificacao || null,
-        valorEstimado: valorEstimado || null,
-        status: "emitido",
-      };
+      const payload = { templateId: templateId ? Number(templateId) : null, destinatarioId: destinatarioId ? Number(destinatarioId) : null, assunto, conteudo, reduzido: reduzido || null, classificacao: classificacao || null, valorEstimado: valorEstimado || null, status: "emitido" };
       let res;
       if (modoEdicao && oficioId) {
         res = await fetch(`/api/oficios/${oficioId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -362,10 +309,7 @@ if (idParaEditar) {
 
       for (let i = 0; i < pagEls.length; i++) {
         if (i > 0) pdf.addPage();
-        const canvas = await html2canvas(pagEls[i] as HTMLElement, {
-          scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#fff",
-          width: PAGE_WIDTH, height: PAGE_HEIGHT, windowWidth: PAGE_WIDTH,
-        });
+        const canvas = await html2canvas(pagEls[i] as HTMLElement, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#fff", width: PAGE_WIDTH, height: PAGE_HEIGHT, windowWidth: PAGE_WIDTH });
         pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfW, pdfH);
       }
 
@@ -391,29 +335,20 @@ if (idParaEditar) {
       <style>{estiloImpressao}</style>
       <Navbar />
 
-      {/* Barra de ferramentas */}
-      <div
-        className="barra-ferramentas"
-        style={{ background: "#fff", borderBottom: "2px solid #E0E7EF", padding: "8px 24px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
-      >
+      <div className="barra-ferramentas" style={{ background: "#fff", borderBottom: "2px solid #E0E7EF", padding: "8px 24px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
         <span style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", marginRight: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {modoEdicao ? `Editando: ${numeroExibido}` : numeroExibido}
         </span>
-
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("bold"); }} style={{ fontWeight: "700", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>B</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("italic"); }} style={{ fontStyle: "italic", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>I</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("underline"); }} style={{ textDecoration: "underline", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>U</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarRecuo(); }} style={{ background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", color: "#444" }}>Recuo ¶</button>
-
         <div style={{ width: "1px", height: "24px", background: "#DDE3EC", margin: "0 4px" }} />
-
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("justifyLeft"); }} style={{ background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 8px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif", color: "#444" }}>Esq</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("justifyCenter"); }} style={{ background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 8px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif", color: "#444" }}>Cen</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("justifyRight"); }} style={{ background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 8px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif", color: "#444" }}>Dir</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("justifyFull"); }} style={{ background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 8px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif", color: "#444" }}>Just</button>
-
         <div style={{ width: "1px", height: "24px", background: "#DDE3EC", margin: "0 4px" }} />
-
         <select onChange={(e) => aplicarFormato("fontSize", e.target.value)} style={{ border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 8px", fontSize: "12px", fontFamily: "Arial, sans-serif", outline: "none" }}>
           <option value="">Tamanho</option>
           <option value="2">10pt</option>
@@ -422,17 +357,13 @@ if (idParaEditar) {
           <option value="5">18pt</option>
           <option value="6">24pt</option>
         </select>
-
         <div style={{ flex: 1 }} />
-
         <button onClick={imprimir} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "6px 16px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Imprimir</button>
         <button onClick={salvarRascunho} disabled={salvando} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "6px 16px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>{salvando ? "Salvando..." : "Salvar Rascunho"}</button>
         <button onClick={gerarPdfDireto} disabled={gerando} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "6px 16px", fontSize: "12px", fontWeight: "700", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>{gerando ? "Gerando..." : "Baixar PDF"}</button>
       </div>
 
       <div style={{ display: "flex", gap: "24px", padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
-
-        {/* Painel lateral */}
         <div className="painel-lateral" style={{ width: "280px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #DDE3EC", padding: "16px" }}>
             <h3 style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 12px" }}>Configurações</h3>
@@ -485,88 +416,39 @@ if (idParaEditar) {
             <p style={{ fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", margin: "0 0 8px" }}>
               {paginas.length} página{paginas.length > 1 ? "s" : ""}
             </p>
-            <button
-              onClick={() => {
-                const novas = [...paginas, ""];
-                setPaginas(novas);
-                paginaConteudoRefs.current = [...paginaConteudoRefs.current, ""];
-              }}
-              style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}
-            >+ Adicionar Página</button>
+            <button onClick={() => { const n = [...paginas, ""]; setPaginas(n); paginaConteudoRefs.current = [...paginaConteudoRefs.current, ""]; }} style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}>+ Adicionar Página</button>
             {paginas.length > 1 && (
-              <button
-                onClick={() => {
-                  setPaginas(paginas.slice(0, -1));
-                  paginaConteudoRefs.current = paginaConteudoRefs.current.slice(0, -1);
-                }}
-                style={{ width: "100%", background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
-              >− Remover Última Página</button>
+              <button onClick={() => { setPaginas(paginas.slice(0, -1)); paginaConteudoRefs.current = paginaConteudoRefs.current.slice(0, -1); }} style={{ width: "100%", background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>− Remover Última Página</button>
             )}
           </div>
         </div>
 
-        {/* Área de páginas A4 */}
         <div className="area-paginas" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
           {paginas.map((conteudoInicial, index) => (
-            <div key={`pagina-${index}-${paginas.length}`} className="pagina-wrapper">
+            <div key={`p-${index}-${paginas.length}`} className="pagina-wrapper">
               {index > 0 && (
                 <div className="separador-pagina" style={{ textAlign: "center", fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", marginBottom: "8px" }}>
                   — Página {index + 1} —
                 </div>
               )}
-              <div
-                className="pagina-a4"
-                style={{
-                  width: `${PAGE_WIDTH}px`,
-                  height: `${PAGE_HEIGHT}px`,
-                  background: "#fff",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                  padding: `${MARGIN_TOP}px ${MARGIN_RIGHT}px ${MARGIN_BOTTOM}px ${MARGIN_LEFT}px`,
-                  boxSizing: "border-box",
-                  display: "flex",
-                  flexDirection: "column",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="pagina-a4" style={{ width: `${PAGE_WIDTH}px`, height: `${PAGE_HEIGHT}px`, background: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", padding: `${MARGIN_TOP}px ${MARGIN_RIGHT}px ${MARGIN_BOTTOM}px ${MARGIN_LEFT}px`, boxSizing: "border-box", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
                 <Cabecalho />
-
                 {index === 0 && (
                   <div style={{ fontFamily: "Arial, sans-serif", fontSize: "12pt", marginBottom: "12px" }}>
                     <div style={{ marginBottom: "10px" }}>OFÍCIO Nº {numeroExibido}</div>
                     <div style={{ textAlign: "right", marginBottom: "16px" }}>
-                      Rondonópolis,{" "}
-                      {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
+                      Rondonópolis,{" "}{new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.
                     </div>
                     {dest && (
                       <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
-                        {dest.responsavel ? (
-                          <>
-                            <div>Ao Senhor</div>
-                            <div><strong>{dest.responsavel}</strong></div>
-                            {dest.cidade && <div>{dest.cidade}</div>}
-                          </>
-                        ) : (
-                          <div><strong>{dest.nome}</strong></div>
-                        )}
+                        {dest.responsavel ? (<><div>Ao Senhor</div><div><strong>{dest.responsavel}</strong></div>{dest.cidade && <div>{dest.cidade}</div>}</>) : (<div><strong>{dest.nome}</strong></div>)}
                         {dest.endereco && <div>{dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>}
                       </div>
                     )}
-                    {assunto && (
-                      <div style={{ marginBottom: "20px", fontWeight: "bold" }}>
-                        Assunto: {assunto}.
-                      </div>
-                    )}
+                    {assunto && <div style={{ marginBottom: "20px", fontWeight: "bold" }}>Assunto: {assunto}.</div>}
                   </div>
                 )}
-
-                <PaginaEditavel
-                  key={`editavel-${index}`}
-                  index={index}
-                  conteudoInicial={conteudoInicial}
-                  onChange={handlePaginaChange}
-                />
-
+                <PaginaEditavel key={`e-${index}-${conteudoInicial.length}`} index={index} conteudoInicial={conteudoInicial} onChange={handlePaginaChange} />
                 <Rodape />
               </div>
             </div>
