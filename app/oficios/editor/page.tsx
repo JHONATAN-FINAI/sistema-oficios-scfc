@@ -57,6 +57,47 @@ function Rodape() {
   );
 }
 
+// Componente de página editável — isolado para evitar re-renders
+function PaginaEditavel({
+  index,
+  conteudoInicial,
+  onChange,
+}: {
+  index: number;
+  conteudoInicial: string;
+  onChange: (index: number, html: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inicializado = useRef(false);
+
+  useEffect(() => {
+    if (ref.current && !inicializado.current) {
+      ref.current.innerHTML = conteudoInicial;
+      inicializado.current = true;
+    }
+  }, [conteudoInicial]);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={(e) => onChange(index, (e.target as HTMLDivElement).innerHTML)}
+      style={{
+        flex: 1,
+        outline: "none",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "12pt",
+        lineHeight: "1.5",
+        color: "#000",
+        textAlign: "justify",
+        overflowY: "hidden",
+        minHeight: "50px",
+      }}
+    />
+  );
+}
+
 const estiloImpressao = `
   @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -103,20 +144,23 @@ export default function EditorPage() {
   const [gerando, setGerando] = useState(false);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [oficioId, setOficioId] = useState<number | null>(null);
+  const [carregando, setCarregando] = useState(true);
+
+  // Conteúdo das páginas — cada item é o HTML inicial de uma página
   const [paginas, setPaginas] = useState<string[]>([""]);
-  const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Ref para acessar o HTML atual de cada página
+  const paginaConteudoRefs = useRef<string[]>([""]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  useEffect(() => { carregarDados(); }, []);
-
   useEffect(() => {
-    if (editId && templates.length > 0) carregarOficioParaEdicao(Number(editId));
-  }, [editId, templates]);
+    carregarDados();
+  }, []);
 
   async function carregarDados() {
+    setCarregando(true);
     const [tRes, dRes, nRes] = await Promise.all([
       fetch("/api/templates"),
       fetch("/api/destinatarios"),
@@ -126,12 +170,19 @@ export default function EditorPage() {
     setTemplates(tData);
     setDestinatarios(dData);
     setProximoNumero(nData.numero);
+
+    if (editId) {
+      await carregarOficioParaEdicao(Number(editId), tData);
+    } else {
+      setCarregando(false);
+    }
   }
 
-  async function carregarOficioParaEdicao(id: number) {
+  async function carregarOficioParaEdicao(id: number, tData: Template[]) {
     const res = await fetch(`/api/oficios/${id}`);
-    if (!res.ok) return;
+    if (!res.ok) { setCarregando(false); return; }
     const oficio = await res.json();
+
     setModoEdicao(true);
     setOficioId(id);
     setNumeroOficio(oficio.numero);
@@ -141,20 +192,15 @@ export default function EditorPage() {
     setReduzido(oficio.reduzido || "");
     setValorEstimado(oficio.valorEstimado || "");
     if (oficio.classificacao) setClassificacao(oficio.classificacao);
-const conteudo = oficio.conteudo || "";
-setPaginas([conteudo]);
-// Tenta múltiplas vezes para garantir que o DOM está pronto
-const tentarAtualizar = (tentativas: number) => {
-  const ref = paginaRefs.current[0];
-  if (ref) {
-    ref.innerHTML = conteudo;
-  } else if (tentativas > 0) {
-    setTimeout(() => tentarAtualizar(tentativas - 1), 200);
-  }
-};
-setTimeout(() => tentarAtualizar(5), 100);
-    const template = templates.find((t) => t.id === oficio.templateId);
+
+    const conteudo = oficio.conteudo || "";
+    setPaginas([conteudo]);
+    paginaConteudoRefs.current = [conteudo];
+
+    const template = tData.find((t: Template) => t.id === oficio.templateId);
     if (template) setUsaClassificacao(template.usaClassificacao);
+
+    setCarregando(false);
   }
 
   function handleTemplateChange(id: string) {
@@ -164,22 +210,17 @@ setTimeout(() => tentarAtualizar(5), 100);
     setUsaClassificacao(template.usaClassificacao);
     if (template.conteudo) {
       setPaginas([template.conteudo]);
-      setTimeout(() => {
-        const ref = paginaRefs.current[0];
-        if (ref) ref.innerHTML = template.conteudo;
-      }, 100);
+      paginaConteudoRefs.current = [template.conteudo];
     }
     if (!template.usaClassificacao) { setClassificacao(null); setReduzido(""); }
   }
 
-  function handleInput(index: number, html: string) {
-    const novasPaginas = [...paginas];
-    novasPaginas[index] = html;
-    setPaginas(novasPaginas);
+  function handlePaginaChange(index: number, html: string) {
+    paginaConteudoRefs.current[index] = html;
   }
 
   function getConteudoCompleto(): string {
-    return paginas.join("");
+    return paginaConteudoRefs.current.join("");
   }
 
   async function buscarClassificacao() {
@@ -198,13 +239,15 @@ setTimeout(() => tentarAtualizar(5), 100);
   function inserirQuadro() {
     if (!classificacao) { setErroClassificacao("Busque a classificação antes de inserir."); return; }
     const quadro = `<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:10pt;"><tbody><tr><td colspan="2" style="background:#e8e8e8;font-weight:bold;padding:5px 8px;border:1px solid #000;text-align:center;">CLASSIFICAÇÃO ORÇAMENTÁRIA DA DESPESA</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;width:40%;font-weight:bold;">Órgão:</td><td style="border:1px solid #000;padding:3px 8px;">02 - Prefeitura Municipal de Rondonópolis</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Unidade:</td><td style="border:1px solid #000;padding:3px 8px;">15 - Secretaria Municipal de Administração</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Funcional Programática:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.funcional}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Elemento de Despesa:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.elemento}${classificacao.subelemento ? ` / ${classificacao.subelemento}` : ""}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Fonte:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.fonte}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Reduzido:</td><td style="border:1px solid #000;padding:3px 8px;">${classificacao.reduzido}</td></tr><tr><td style="border:1px solid #000;padding:3px 8px;font-weight:bold;">Valor Estimado:</td><td style="border:1px solid #000;padding:3px 8px;">${valorEstimado || "_______________"}</td></tr><tr><td colspan="2" style="border:1px solid #000;padding:10px 8px;"><strong>ANÁLISE DA SECRETARIA DE FAZENDA EM:</strong> _____ / _____ / _______<br/><br/>&nbsp;&nbsp;&nbsp;□ DEFERIDO &nbsp;&nbsp; □ INDEFERIDO &nbsp;&nbsp; Nº RESERVA: _______________<br/><br/><div style="text-align:center;margin-top:8px;">________________________________________<br/>Secretaria Municipal de Fazenda</div></td></tr></tbody></table>`;
+
+    const ultimaIdx = paginas.length - 1;
+    const novoConteudo = paginaConteudoRefs.current[ultimaIdx] + quadro;
+    paginaConteudoRefs.current[ultimaIdx] = novoConteudo;
+
+    // Força re-render da última página com novo conteúdo
     const novasPaginas = [...paginas];
-    novasPaginas[novasPaginas.length - 1] += quadro;
+    novasPaginas[ultimaIdx] = novoConteudo;
     setPaginas(novasPaginas);
-    setTimeout(() => {
-      const lastRef = paginaRefs.current[novasPaginas.length - 1];
-      if (lastRef) lastRef.innerHTML = novasPaginas[novasPaginas.length - 1];
-    }, 50);
   }
 
   function aplicarFormato(comando: string, valor?: string) {
@@ -330,7 +373,13 @@ setTimeout(() => tentarAtualizar(5), 100);
     finally { setGerando(false); }
   }
 
-  if (status === "loading") return null;
+  if (status === "loading" || carregando) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F4F8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontFamily: "Arial, sans-serif", color: "#666", fontSize: "14px" }}>Carregando...</div>
+      </div>
+    );
+  }
 
   const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
   const numeroExibido = modoEdicao ? numeroOficio : proximoNumero;
@@ -434,24 +483,30 @@ setTimeout(() => tentarAtualizar(5), 100);
             <p style={{ fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", margin: "0 0 8px" }}>
               {paginas.length} página{paginas.length > 1 ? "s" : ""}
             </p>
-            <button onClick={() => setPaginas([...paginas, ""])} style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}>+ Adicionar Página</button>
+            <button
+              onClick={() => {
+                const novas = [...paginas, ""];
+                setPaginas(novas);
+                paginaConteudoRefs.current = [...paginaConteudoRefs.current, ""];
+              }}
+              style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}
+            >+ Adicionar Página</button>
             {paginas.length > 1 && (
-              <button onClick={() => setPaginas(paginas.slice(0, -1))} style={{ width: "100%", background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>− Remover Última Página</button>
+              <button
+                onClick={() => {
+                  setPaginas(paginas.slice(0, -1));
+                  paginaConteudoRefs.current = paginaConteudoRefs.current.slice(0, -1);
+                }}
+                style={{ width: "100%", background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
+              >− Remover Última Página</button>
             )}
           </div>
         </div>
 
         {/* Área de páginas A4 */}
         <div className="area-paginas" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
-          {paginas.map((conteudoPagina, index) => (
-            <div
-              key={index}
-              className={
-                index > 0 && (typeof conteudoPagina === "string" ? conteudoPagina : "").replace(/<[^>]*>/g, "").trim() === ""
-                  ? "pagina-wrapper pagina-wrapper-vazio"
-                  : "pagina-wrapper"
-              }
-            >
+          {paginas.map((conteudoInicial, index) => (
+            <div key={`pagina-${index}-${paginas.length}`} className="pagina-wrapper">
               {index > 0 && (
                 <div className="separador-pagina" style={{ textAlign: "center", fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", marginBottom: "8px" }}>
                   — Página {index + 1} —
@@ -503,30 +558,11 @@ setTimeout(() => tentarAtualizar(5), 100);
                   </div>
                 )}
 
-                <div
-                  ref={(el) => {
-                    paginaRefs.current[index] = el;
-                    if (el && !el.matches(":focus")) {
-                      const conteudo = typeof conteudoPagina === "string" ? conteudoPagina : "";
-                      if (el.innerHTML !== conteudo) {
-                        el.innerHTML = conteudo;
-                      }
-                    }
-                  }}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={(e) => handleInput(index, (e.target as HTMLDivElement).innerHTML)}
-                  style={{
-                    flex: 1,
-                    outline: "none",
-                    fontFamily: "Arial, sans-serif",
-                    fontSize: "12pt",
-                    lineHeight: "1.5",
-                    color: "#000",
-                    textAlign: "justify",
-                    overflowY: "hidden",
-                    minHeight: "50px",
-                  }}
+                <PaginaEditavel
+                  key={`editavel-${index}`}
+                  index={index}
+                  conteudoInicial={conteudoInicial}
+                  onChange={handlePaginaChange}
                 />
 
                 <Rodape />
