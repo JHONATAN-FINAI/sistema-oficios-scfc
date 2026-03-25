@@ -125,11 +125,15 @@ export default function EditorPage() {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      carregarDados();
+ useEffect(() => {
+  if (status === "authenticated" || status === "unauthenticated") {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
     }
-  }, [status]);
+    carregarDados();
+  }
+}, [status]);
 
   async function carregarDados() {
     setCarregando(true);
