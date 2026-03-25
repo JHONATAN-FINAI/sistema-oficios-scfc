@@ -328,7 +328,7 @@ export default function EditorPage() {
   }
 
   const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
-  const numeroExibido = modoEdicao ? numeroOficio : proximoNumero;
+  const numeroExibido = numeroOficio || proximoNumero;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F0F4F8" }}>
@@ -337,7 +337,7 @@ export default function EditorPage() {
 
       <div className="barra-ferramentas" style={{ background: "#fff", borderBottom: "2px solid #E0E7EF", padding: "8px 24px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
         <span style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", marginRight: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {modoEdicao ? `Editando: ${numeroExibido}` : numeroExibido}
+        {numeroExibido}
         </span>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("bold"); }} style={{ fontWeight: "700", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>B</button>
         <button onMouseDown={(e) => { e.preventDefault(); aplicarFormato("italic"); }} style={{ fontStyle: "italic", background: "#F5F7FA", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "4px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>I</button>
