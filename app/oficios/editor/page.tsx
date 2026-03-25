@@ -141,13 +141,18 @@ export default function EditorPage() {
     setReduzido(oficio.reduzido || "");
     setValorEstimado(oficio.valorEstimado || "");
     if (oficio.classificacao) setClassificacao(oficio.classificacao);
-    const conteudo = oficio.conteudo || "";
-    setPaginas([conteudo]);
-    // Força atualização do DOM após render
-    setTimeout(() => {
-      const ref = paginaRefs.current[0];
-      if (ref) ref.innerHTML = conteudo;
-    }, 300);
+const conteudo = oficio.conteudo || "";
+setPaginas([conteudo]);
+// Tenta múltiplas vezes para garantir que o DOM está pronto
+const tentarAtualizar = (tentativas: number) => {
+  const ref = paginaRefs.current[0];
+  if (ref) {
+    ref.innerHTML = conteudo;
+  } else if (tentativas > 0) {
+    setTimeout(() => tentarAtualizar(tentativas - 1), 200);
+  }
+};
+setTimeout(() => tentarAtualizar(5), 100);
     const template = templates.find((t) => t.id === oficio.templateId);
     if (template) setUsaClassificacao(template.usaClassificacao);
   }
