@@ -155,9 +155,11 @@ export default function EditorPage() {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  useEffect(() => {
+ useEffect(() => {
+  if (status === "authenticated") {
     carregarDados();
-  }, []);
+  }
+}, [status]);
 
   async function carregarDados() {
     setCarregando(true);
@@ -171,13 +173,13 @@ export default function EditorPage() {
     setDestinatarios(dData);
     setProximoNumero(nData.numero);
 
-    if (editId) {
-      await carregarOficioParaEdicao(Number(editId), tData);
-    } else {
-      setCarregando(false);
-    }
-  }
-
+   const idParaEditar = new URLSearchParams(window.location.search).get("editar");
+if (idParaEditar) {
+  await carregarOficioParaEdicao(Number(idParaEditar), tData);
+} else {
+  setCarregando(false);
+}
+    
   async function carregarOficioParaEdicao(id: number, tData: Template[]) {
     const res = await fetch(`/api/oficios/${id}`);
     if (!res.ok) { setCarregando(false); return; }
