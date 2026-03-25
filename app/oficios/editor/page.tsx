@@ -159,6 +159,7 @@ export default function EditorPage() {
     setModoEdicao(true);
     setOficioId(id);
     setNumeroOficio(oficio.numero);
+    console.log("Número do ofício carregado:", oficio.numero);
     setTemplateId(oficio.templateId?.toString() || "");
     setDestinatarioId(oficio.destinatarioId?.toString() || "");
     setAssunto(oficio.assunto);
