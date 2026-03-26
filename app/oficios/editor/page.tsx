@@ -430,7 +430,7 @@ export default function EditorPage() {
 
         <div className="area-paginas" style={{ flex: 1, display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
           {paginas.map((conteudoInicial, index) => (
-            <div key={`p-${index}-${paginas.length}`} className="pagina-wrapper">
+            <div key={`p-${index}`} className="pagina-wrapper">
               {index > 0 && (
                 <div className="separador-pagina" style={{ textAlign: "center", fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", marginBottom: "8px" }}>
                   — Página {index + 1} —
@@ -453,7 +453,7 @@ export default function EditorPage() {
                     {assunto && <div style={{ marginBottom: "20px", fontWeight: "bold" }}>Assunto: {assunto}.</div>}
                   </div>
                 )}
-                <PaginaEditavel key={`e-${index}-${conteudoInicial.length}`} index={index} conteudoInicial={conteudoInicial} onChange={handlePaginaChange} />
+                <PaginaEditavel key={`e-${index}`} index={index} conteudoInicial={conteudoInicial} onChange={handlePaginaChange} />
                 <Rodape />
               </div>
             </div>
