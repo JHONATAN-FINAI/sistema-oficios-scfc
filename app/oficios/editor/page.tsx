@@ -421,7 +421,16 @@ export default function EditorPage() {
             <p style={{ fontSize: "11px", color: "#888", fontFamily: "Arial, sans-serif", margin: "0 0 8px" }}>
               {paginas.length} página{paginas.length > 1 ? "s" : ""}
             </p>
-            <button onClick={() => { const n = [...paginas, ""]; setPaginas(n); paginaConteudoRefs.current = [...paginaConteudoRefs.current, ""]; }} style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}>+ Adicionar Página</button>
+            <button onClick={() => {
+  // Salva o conteúdo atual de todas as páginas antes de adicionar nova
+  document.querySelectorAll("[contenteditable]").forEach((el, i) => {
+    paginaConteudoRefs.current[i] = (el as HTMLDivElement).innerHTML;
+  });
+  const conteudosAtuais = [...paginaConteudoRefs.current];
+  const novosConteudos = [...conteudosAtuais, ""];
+  paginaConteudoRefs.current = novosConteudos;
+  setPaginas(novosConteudos);
+}} style={{ width: "100%", background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif", marginBottom: "6px" }}>+ Adicionar Página</button>
             {paginas.length > 1 && (
               <button onClick={() => { setPaginas(paginas.slice(0, -1)); paginaConteudoRefs.current = paginaConteudoRefs.current.slice(0, -1); }} style={{ width: "100%", background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "6px", padding: "8px", fontSize: "12px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>− Remover Última Página</button>
             )}
