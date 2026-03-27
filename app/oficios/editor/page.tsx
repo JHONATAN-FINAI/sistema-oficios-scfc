@@ -11,10 +11,10 @@ const CABECALHO_URL =
   "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
 
 const PAGE_W = 794;
-const M_TOP = 76;
-const M_BOTTOM = 76;
 const M_LEFT = 114;
 const M_RIGHT = 76;
+const M_TOP = 76;
+const M_BOTTOM = 76;
 
 interface Template { id: number; nome: string; conteudo: string; usaClassificacao: boolean; }
 interface Destinatario { id: number; codigo: string; nome: string; endereco: string | null; cidade: string | null; responsavel: string | null; cargo: string | null; }
@@ -172,41 +172,121 @@ export default function EditorPage() {
     if (!id) return;
     setGerando(true);
     try {
-      const elemento = document.getElementById("area-impressao");
-      if (!elemento) return;
-      const canvas = await html2canvas(elemento, {
-        scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#fff",
-        width: PAGE_W, windowWidth: PAGE_W,
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      const ratio = pdfW / imgW;
-      const pageHpx = pdfH / ratio;
-      let posY = 0;
-      let page = 0;
-      while (posY < imgH) {
-        if (page > 0) pdf.addPage();
-        const slice = document.createElement("canvas");
-        slice.width = imgW;
-        slice.height = Math.min(pageHpx, imgH - posY);
-        const ctx = slice.getContext("2d")!;
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, slice.width, slice.height);
-        ctx.drawImage(canvas, 0, -posY);
-        pdf.addImage(slice.toDataURL("image/png"), "PNG", 0, 0, pdfW, slice.height * ratio);
-        posY += pageHpx;
-        page++;
-      }
-      const num = (modoEdicao ? numeroOficio : proximoNumero).replace(/\//g, "-");
-      pdf.save(`Oficio_${num}.pdf`);
+      // Abre janela de impressão otimizada para PDF
+      const conteudoHtml = editorRef.current?.innerHTML || "";
+      const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
+      const numero = numeroOficio || proximoNumero;
+      const dataHoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+      const destinatarioHtml = dest ? `
+        <div style="margin-bottom:14px;line-height:1.6;">
+          ${dest.responsavel ? `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>${dest.cargo ? `<div>${dest.cargo}</div>` : ""}` : `<div><strong>${dest.nome}</strong></div>`}
+          ${dest.endereco ? `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>` : ""}
+        </div>` : "";
+
+      const assuntoHtml = assunto ? `<div style="margin-bottom:18px;font-weight:bold;">Assunto: ${assunto}.</div>` : "";
+
+      const htmlCompleto = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+  @page {
+    size: A4 portrait;
+    margin: 155px 76px 55px 114px;
+    @top-center {
+      content: element(cabecalho);
+    }
+    @bottom-center {
+      content: element(rodape);
+    }
+  }
+  html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.5; color: #000; }
+  
+  #cabecalho-print {
+    position: running(cabecalho);
+    width: 100%;
+    text-align: center;
+    padding: 16px 0 8px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  #rodape-print {
+    position: running(rodape);
+    width: 100%;
+    text-align: center;
+    font-size: 8pt;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding: 6px 0;
+  }
+
+  /* Fallback para navegadores sem suporte a running elements */
+  .cabecalho-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 145px;
+    text-align: center;
+    padding: 16px 0 8px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .rodape-fixed {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    text-align: center;
+    font-size: 8pt;
+    color: #555;
+    background: white;
+    border-top: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .conteudo { margin-top: 0; }
+  p { margin: 0 0 8px 0; text-align: justify; }
+  table { border-collapse: collapse; width: 100%; }
+  td { border: 1px solid #000; padding: 3px 8px; }
+</style>
+</head>
+<body>
+  <div class="cabecalho-fixed">
+    <img src="${CABECALHO_URL}" style="max-height:120px;max-width:100%;object-fit:contain;" crossorigin="anonymous" />
+  </div>
+  <div class="rodape-fixed">
+    Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
+  </div>
+  <div class="conteudo">
+    <div style="font-weight:bold;margin-bottom:10px;">OFÍCIO Nº ${numero}</div>
+    <div style="text-align:right;margin-bottom:14px;">Rondonópolis, ${dataHoje}.</div>
+    ${destinatarioHtml}
+    ${assuntoHtml}
+    ${conteudoHtml}
+  </div>
+</body>
+</html>`;
+
+      const janela = window.open("", "_blank", "width=900,height=700");
+      if (!janela) { alert("Permita pop-ups para este site."); return; }
+      janela.document.write(htmlCompleto);
+      janela.document.close();
+      janela.onload = () => {
+        setTimeout(() => {
+          janela.focus();
+          janela.print();
+        }, 500);
+      };
     } finally { setGerando(false); }
   }
 
   function imprimir() {
-    window.print();
+    executarGeracaoPdf(oficioId);
   }
 
   if (status === "loading" || carregando) {
@@ -224,38 +304,16 @@ export default function EditorPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
       <style>{`
-       @media print {
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  body { margin: 0; padding: 0; background: white; }
-  .no-print { display: none !important; }
-  #cabecalho-fixo { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 150px; text-align: center; padding-top: 16px; background: white; }
-  #rodape-fixo { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; border-top: 1px solid #ccc; font-size: 8pt; color: #555; text-align: center; font-family: Arial, sans-serif; background: white; padding: 6px 0; }
-  #cabecalho-documento { display: none !important; }
-  #rodape-documento { display: none !important; }
-  #area-impressao { width: 100% !important; box-shadow: none !important; background: white !important; margin-top: 160px !important; margin-bottom: 40px !important; }
-}
-@page { size: A4 portrait; margin: 0; }
         #editor-conteudo { outline: none; }
         #editor-conteudo p { margin: 0 0 8px 0; }
         #editor-conteudo table { border-collapse: collapse; width: 100%; }
         #editor-conteudo td { border: 1px solid #000; padding: 3px 8px; }
       `}</style>
 
-      {/* Cabeçalho e rodapé fixos — visíveis só na impressão */}
-      <div id="cabecalho-fixo" style={{ display: "none" }}>
-        <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" style={{ maxHeight: "130px", objectFit: "contain" }} />
-      </div>
-      <div id="rodape-fixo" style={{ display: "none" }}>
-        Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-      </div>
-
-      {/* Navbar */}
-      <div className="no-print">
-        <Navbar />
-      </div>
+      <Navbar />
 
       {/* Barra de ferramentas */}
-      <div className="no-print" style={{ background: "#fff", borderBottom: "1px solid #DDE3EC", padding: "6px 24px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+      <div style={{ background: "#fff", borderBottom: "1px solid #DDE3EC", padding: "6px 24px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
         <span style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", marginRight: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {numero}
         </span>
@@ -278,16 +336,16 @@ export default function EditorPage() {
           <option value="6">24</option>
         </select>
         <div style={{ flex: 1 }} />
-        <button onClick={imprimir} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>Imprimir</button>
+        <button onClick={imprimir} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>Imprimir / PDF</button>
         <button onClick={() => salvar("rascunho")} disabled={salvando} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>{salvando ? "Salvando..." : "Salvar Rascunho"}</button>
-        <button onClick={() => salvar("emitido", true)} disabled={gerando || salvando} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>{gerando ? "Gerando..." : "Baixar PDF"}</button>
+        <button onClick={() => salvar("emitido", true)} disabled={gerando || salvando} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>{gerando ? "Abrindo..." : "Emitir e Imprimir"}</button>
       </div>
 
-      {/* Layout principal */}
+      {/* Layout */}
       <div style={{ display: "flex", maxWidth: "1300px", margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Painel lateral */}
-        <div className="no-print" style={{ width: "260px", flexShrink: 0, marginRight: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ width: "260px", flexShrink: 0, marginRight: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #DDE3EC", padding: "14px" }}>
             <h3 style={{ fontSize: "11px", fontWeight: "700", color: "#0D3B7A", fontFamily: "Arial, sans-serif", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 10px" }}>Configurações</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -338,10 +396,10 @@ export default function EditorPage() {
 
         {/* Documento */}
         <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          <div id="area-impressao" style={{ width: `${PAGE_W}px`, background: "#fff", boxShadow: "0 2px 16px rgba(0,0,0,0.18)", minHeight: "1123px" }}>
+          <div style={{ width: `${PAGE_W}px`, background: "#fff", boxShadow: "0 2px 16px rgba(0,0,0,0.18)", minHeight: "1123px" }}>
 
-            {/* Cabeçalho visível no editor */}
-            <div id="cabecalho-documento" style={{ padding: `${M_TOP}px ${M_RIGHT}px 12px ${M_LEFT}px`, borderBottom: "1px solid #e0e0e0" }}>
+            {/* Cabeçalho no editor */}
+            <div style={{ padding: `${M_TOP}px ${M_RIGHT}px 12px ${M_LEFT}px`, borderBottom: "1px solid #e0e0e0" }}>
               <div style={{ textAlign: "center" }}>
                 <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" style={{ maxWidth: "100%", maxHeight: "130px", objectFit: "contain" }} />
               </div>
@@ -385,8 +443,8 @@ export default function EditorPage() {
               }}
             />
 
-            {/* Rodapé visível no editor */}
-            <div id="rodape-documento" style={{ padding: `8px ${M_RIGHT}px 20px ${M_LEFT}px`, borderTop: "1px solid #ccc", fontSize: "8pt", color: "#555", textAlign: "center", fontFamily: "Arial, sans-serif" }}>
+            {/* Rodapé no editor */}
+            <div style={{ padding: `8px ${M_RIGHT}px 20px ${M_LEFT}px`, borderTop: "1px solid #ccc", fontSize: "8pt", color: "#555", textAlign: "center", fontFamily: "Arial, sans-serif" }}>
               Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
             </div>
           </div>
