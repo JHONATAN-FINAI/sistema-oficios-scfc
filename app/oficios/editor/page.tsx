@@ -231,33 +231,63 @@ export default function EditorPage() {
   return (
     <>
       <style>{`
-        @media print {
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          body { margin: 0; padding: 0; background: white; }
-          .no-print { display: none !important; }
-          #area-impressao {
-            width: 794px !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            background: white !important;
-          }
-          #area-impressao .pagina-container {
-            padding: 0 !important;
-            background: white !important;
-          }
-        }
-        @page { margin: 0; size: A4 portrait; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; background: white; }
+    .no-print { display: none !important; }
 
-        #editor-conteudo:empty:before {
-          content: 'Digite o conteúdo do ofício aqui...';
-          color: #aaa;
-          font-style: italic;
-        }
-        #editor-conteudo:focus { outline: none; }
-        #editor-conteudo p { margin: 0 0 8px 0; text-align: justify; }
-        #editor-conteudo table { border-collapse: collapse; width: 100%; }
-        #editor-conteudo td { border: 1px solid #000; padding: 3px 8px; }
-      `}</style>
+    @page {
+      size: A4 portrait;
+      margin: 160px 76px 60px 114px;
+    }
+
+    #cabecalho-fixo {
+      position: fixed;
+      top: -140px;
+      left: 0;
+      right: 0;
+      height: 140px;
+      text-align: center;
+    }
+
+    #rodape-fixo {
+      position: fixed;
+      bottom: -50px;
+      left: 0;
+      right: 0;
+      height: 40px;
+      border-top: 1px solid #ccc;
+      font-size: 8pt;
+      color: #555;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #area-impressao {
+      width: 100% !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+
+    #cabecalho-documento { display: none !important; }
+    #rodape-documento { display: none !important; }
+  }
+
+  @page { size: A4 portrait; }
+
+  #editor-conteudo:empty:before {
+    content: 'Digite o conteúdo do ofício aqui...';
+    color: #aaa;
+    font-style: italic;
+  }
+  #editor-conteudo:focus { outline: none; }
+  #editor-conteudo p { margin: 0 0 8px 0; text-align: justify; }
+  #editor-conteudo table { border-collapse: collapse; width: 100%; }
+  #editor-conteudo td { border: 1px solid #000; padding: 3px 8px; }
+`}</style>
 
       <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
         {/* Navbar */}
