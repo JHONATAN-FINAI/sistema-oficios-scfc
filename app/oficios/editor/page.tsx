@@ -224,17 +224,17 @@ export default function EditorPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
       <style>{`
-        @media print {
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          body { margin: 0; padding: 0; background: white; }
-          .no-print { display: none !important; }
-          #cabecalho-fixo { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 150px; text-align: center; padding-top: 16px; background: white; }
-          #rodape-fixo { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 32px; border-top: 1px solid #ccc; font-size: 8pt; color: #555; text-align: center; font-family: Arial, sans-serif; background: white; line-height: 32px; }
-          #cabecalho-documento { display: none !important; }
-          #rodape-documento { display: none !important; }
-          #area-impressao { width: 100% !important; box-shadow: none !important; background: white !important; padding-top: 160px !important; padding-bottom: 48px !important; }
-        }
-        @page { size: A4 portrait; margin: 0; }
+       @media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { margin: 0; padding: 0; background: white; }
+  .no-print { display: none !important; }
+  #cabecalho-fixo { display: block !important; position: fixed; top: 0; left: 0; right: 0; height: 150px; text-align: center; padding-top: 16px; background: white; }
+  #rodape-fixo { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; border-top: 1px solid #ccc; font-size: 8pt; color: #555; text-align: center; font-family: Arial, sans-serif; background: white; padding: 6px 0; }
+  #cabecalho-documento { display: none !important; }
+  #rodape-documento { display: none !important; }
+  #area-impressao { width: 100% !important; box-shadow: none !important; background: white !important; margin-top: 160px !important; margin-bottom: 40px !important; }
+}
+@page { size: A4 portrait; margin: 0; }
         #editor-conteudo { outline: none; }
         #editor-conteudo p { margin: 0 0 8px 0; }
         #editor-conteudo table { border-collapse: collapse; width: 100%; }
