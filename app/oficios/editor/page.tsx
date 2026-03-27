@@ -218,9 +218,16 @@ export default function EditorPage() {
 
   if (status === "loading" || carregando) {
     return (
+    <>
+      <style>{`...`}</style>
 
       {/* Elementos fixos apenas para impressão */}
-<div id="cabecalho-fixo" style={{ display: "none" }}>
+      <div id="cabecalho-fixo" style={{ display: "none" }}>
+        <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" style={{ maxHeight: "130px", objectFit: "contain" }} />
+      </div>
+      <div id="rodape-fixo" style={{ display: "none" }}>
+        Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
+      </div>
   <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" style={{ maxHeight: "130px", objectFit: "contain" }} />
 </div>
 <div id="rodape-fixo" style={{ display: "none" }}>
