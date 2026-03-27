@@ -4,21 +4,133 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 const CABECALHO_URL =
   "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
 
-const PAGE_W = 794;
 const M_LEFT = 114;
 const M_RIGHT = 76;
 const M_TOP = 76;
 const M_BOTTOM = 76;
+const PAGE_W = 794;
 
 interface Template { id: number; nome: string; conteudo: string; usaClassificacao: boolean; }
 interface Destinatario { id: number; codigo: string; nome: string; endereco: string | null; cidade: string | null; responsavel: string | null; cargo: string | null; }
 interface Classificacao { reduzido: string; funcional: string; fonte: string; naturezaDespesa: string; elemento: string; subelemento: string; }
+
+function montarHtmlImpressao(params: {
+  numero: string;
+  dataHoje: string;
+  dest: Destinatario | undefined;
+  assunto: string;
+  conteudo: string;
+}) {
+  const { numero, dataHoje, dest, assunto, conteudo } = params;
+
+  const destinatarioHtml = dest ? `
+    <div style="margin-bottom:14px;line-height:1.6;">
+      ${dest.responsavel
+        ? `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>${dest.cargo ? `<div>${dest.cargo}</div>` : ""}<div>${dest.nome}</div>`
+        : `<div><strong>${dest.nome}</strong></div>`
+      }
+      ${dest.endereco ? `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>` : ""}
+    </div>` : "";
+
+  const assuntoHtml = assunto
+    ? `<div style="margin-bottom:18px;font-weight:bold;">Assunto: ${assunto}.</div>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: A4 portrait;
+    margin: 175px 76px 55px 114px;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: white;
+  }
+
+  /* Cabeçalho repetido em todas as páginas */
+  #cabecalho {
+    position: fixed;
+    top: -165px;
+    left: -114px;
+    right: -76px;
+    height: 155px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #e0e0e0;
+    background: white;
+    padding: 12px 76px 8px 114px;
+  }
+
+  #cabecalho img {
+    max-height: 130px;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* Rodapé repetido em todas as páginas */
+  #rodape {
+    position: fixed;
+    bottom: -45px;
+    left: -114px;
+    right: -76px;
+    height: 36px;
+    border-top: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    color: #555;
+    background: white;
+    padding: 0 76px 0 114px;
+  }
+
+  /* Conteúdo */
+  #conteudo {
+    width: 100%;
+  }
+
+  p { margin: 0 0 8px 0; text-align: justify; }
+  div > br { display: block; margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  td, th { border: 1px solid #000; padding: 3px 8px; font-size: 10pt; }
+  h1, h2, h3 { margin: 0 0 8px 0; }
+</style>
+</head>
+<body>
+
+  <div id="cabecalho">
+    <img src="${CABECALHO_URL}" crossorigin="anonymous" />
+  </div>
+
+  <div id="rodape">
+    Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
+  </div>
+
+  <div id="conteudo">
+    <div style="font-weight:bold;margin-bottom:10px;">OFÍCIO Nº ${numero}</div>
+    <div style="text-align:right;margin-bottom:14px;">Rondonópolis, ${dataHoje}.</div>
+    ${destinatarioHtml}
+    ${assuntoHtml}
+    ${conteudo}
+  </div>
+
+</body>
+</html>`;
+}
 
 export default function EditorPage() {
   const { status } = useSession();
@@ -136,157 +248,73 @@ export default function EditorPage() {
     editorRef.current?.focus();
   }
 
-  async function salvar(statusOficio: string, gerarPdf = false) {
-    if (!assunto.trim()) { alert("Informe o assunto."); return; }
+  async function salvarOficio(statusOficio: string): Promise<number | null> {
+    if (!assunto.trim()) { alert("Informe o assunto."); return null; }
     const conteudo = editorRef.current?.innerHTML || "";
-    if (!conteudo.trim()) { alert("O conteúdo está vazio."); return; }
+    if (!conteudo.trim()) { alert("O conteúdo está vazio."); return null; }
+
+    const payload = {
+      templateId: templateId ? Number(templateId) : null,
+      destinatarioId: destinatarioId ? Number(destinatarioId) : null,
+      assunto, conteudo,
+      reduzido: reduzido || null,
+      classificacao: classificacao || null,
+      valorEstimado: valorEstimado || null,
+      status: statusOficio,
+    };
+
+    let res;
+    if (modoEdicao && oficioId) {
+      res = await fetch(`/api/oficios/${oficioId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    } else {
+      res = await fetch("/api/oficios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    }
+
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    return data.id || oficioId;
+  }
+
+  async function salvarRascunho() {
     setSalvando(true);
     try {
-      const payload = {
-        templateId: templateId ? Number(templateId) : null,
-        destinatarioId: destinatarioId ? Number(destinatarioId) : null,
-        assunto, conteudo,
-        reduzido: reduzido || null,
-        classificacao: classificacao || null,
-        valorEstimado: valorEstimado || null,
-        status: statusOficio,
-      };
-      let res;
-      if (modoEdicao && oficioId) {
-        res = await fetch(`/api/oficios/${oficioId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      } else {
-        res = await fetch("/api/oficios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      }
-      if (!res.ok) throw new Error();
-      if (gerarPdf) {
-        const data = await res.json();
-        await executarGeracaoPdf(data.id || oficioId);
-      } else {
-        router.push("/oficios/historico");
-      }
+      await salvarOficio("rascunho");
+      router.push("/oficios/historico");
     } catch { alert("Erro ao salvar."); }
     finally { setSalvando(false); }
   }
 
-  async function executarGeracaoPdf(id: number | null) {
-    if (!id) return;
+  async function gerarPdf() {
     setGerando(true);
     try {
-      // Abre janela de impressão otimizada para PDF
-      const conteudoHtml = editorRef.current?.innerHTML || "";
+      await salvarOficio("emitido");
+
+      const conteudo = editorRef.current?.innerHTML || "";
       const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
       const numero = numeroOficio || proximoNumero;
       const dataHoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
-      const destinatarioHtml = dest ? `
-        <div style="margin-bottom:14px;line-height:1.6;">
-          ${dest.responsavel ? `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>${dest.cargo ? `<div>${dest.cargo}</div>` : ""}` : `<div><strong>${dest.nome}</strong></div>`}
-          ${dest.endereco ? `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>` : ""}
-        </div>` : "";
+      const html = montarHtmlImpressao({ numero, dataHoje, dest, assunto, conteudo });
 
-      const assuntoHtml = assunto ? `<div style="margin-bottom:18px;font-weight:bold;">Assunto: ${assunto}.</div>` : "";
+      const res = await fetch("/api/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html }),
+      });
 
-      const htmlCompleto = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-  @page {
-    size: A4 portrait;
-    margin: 155px 76px 55px 114px;
-    @top-center {
-      content: element(cabecalho);
-    }
-    @bottom-center {
-      content: element(rodape);
-    }
-  }
-  html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.5; color: #000; }
-  
-  #cabecalho-print {
-    position: running(cabecalho);
-    width: 100%;
-    text-align: center;
-    padding: 16px 0 8px;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  #rodape-print {
-    position: running(rodape);
-    width: 100%;
-    text-align: center;
-    font-size: 8pt;
-    color: #555;
-    border-top: 1px solid #ccc;
-    padding: 6px 0;
-  }
+      if (!res.ok) throw new Error(await res.text());
 
-  /* Fallback para navegadores sem suporte a running elements */
-  .cabecalho-fixed {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 145px;
-    text-align: center;
-    padding: 16px 0 8px;
-    background: white;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  .rodape-fixed {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    text-align: center;
-    font-size: 8pt;
-    color: #555;
-    background: white;
-    border-top: 1px solid #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .conteudo { margin-top: 0; }
-  p { margin: 0 0 8px 0; text-align: justify; }
-  table { border-collapse: collapse; width: 100%; }
-  td { border: 1px solid #000; padding: 3px 8px; }
-</style>
-</head>
-<body>
-  <div class="cabecalho-fixed">
-    <img src="${CABECALHO_URL}" style="max-height:120px;max-width:100%;object-fit:contain;" crossorigin="anonymous" />
-  </div>
-  <div class="rodape-fixed">
-    Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-  </div>
-  <div class="conteudo">
-    <div style="font-weight:bold;margin-bottom:10px;">OFÍCIO Nº ${numero}</div>
-    <div style="text-align:right;margin-bottom:14px;">Rondonópolis, ${dataHoje}.</div>
-    ${destinatarioHtml}
-    ${assuntoHtml}
-    ${conteudoHtml}
-  </div>
-</body>
-</html>`;
-
-      const janela = window.open("", "_blank", "width=900,height=700");
-      if (!janela) { alert("Permita pop-ups para este site."); return; }
-      janela.document.write(htmlCompleto);
-      janela.document.close();
-      janela.onload = () => {
-        setTimeout(() => {
-          janela.focus();
-          janela.print();
-        }, 500);
-      };
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Oficio_${numero.replace(/\//g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao gerar PDF.");
     } finally { setGerando(false); }
-  }
-
-  function imprimir() {
-    executarGeracaoPdf(oficioId);
   }
 
   if (status === "loading" || carregando) {
@@ -336,9 +364,8 @@ export default function EditorPage() {
           <option value="6">24</option>
         </select>
         <div style={{ flex: 1 }} />
-        <button onClick={imprimir} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>Imprimir / PDF</button>
-        <button onClick={() => salvar("rascunho")} disabled={salvando} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>{salvando ? "Salvando..." : "Salvar Rascunho"}</button>
-        <button onClick={() => salvar("emitido", true)} disabled={gerando || salvando} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>{gerando ? "Abrindo..." : "Emitir e Imprimir"}</button>
+        <button onClick={salvarRascunho} disabled={salvando} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", cursor: "pointer" }}>{salvando ? "Salvando..." : "Salvar Rascunho"}</button>
+        <button onClick={gerarPdf} disabled={gerando || salvando} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "5px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>{gerando ? "Gerando PDF..." : "Baixar PDF"}</button>
       </div>
 
       {/* Layout */}
@@ -398,7 +425,7 @@ export default function EditorPage() {
         <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
           <div style={{ width: `${PAGE_W}px`, background: "#fff", boxShadow: "0 2px 16px rgba(0,0,0,0.18)", minHeight: "1123px" }}>
 
-            {/* Cabeçalho no editor */}
+            {/* Cabeçalho */}
             <div style={{ padding: `${M_TOP}px ${M_RIGHT}px 12px ${M_LEFT}px`, borderBottom: "1px solid #e0e0e0" }}>
               <div style={{ textAlign: "center" }}>
                 <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" style={{ maxWidth: "100%", maxHeight: "130px", objectFit: "contain" }} />
@@ -443,7 +470,7 @@ export default function EditorPage() {
               }}
             />
 
-            {/* Rodapé no editor */}
+            {/* Rodapé */}
             <div style={{ padding: `8px ${M_RIGHT}px 20px ${M_LEFT}px`, borderTop: "1px solid #ccc", fontSize: "8pt", color: "#555", textAlign: "center", fontFamily: "Arial, sans-serif" }}>
               Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
             </div>
