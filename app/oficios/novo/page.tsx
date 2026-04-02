@@ -248,10 +248,30 @@ export default function NovoOficioPage() {
                 initialValue="<p>Inicie digitando o conteúdo do ofício...</p>"
                 init={{
                   height: 900,
-                  menubar: true,
+                  menubar: "file edit view insert format tools table help",
                   language: "pt_BR",
-                  plugins: ["advlist","autolink","lists","link","charmap","preview","searchreplace","visualblocks","code","fullscreen","insertdatetime","table","help","wordcount","autoresize"],
-                  toolbar: "undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | recuoPrimeiraLinha | table | removeformat | fullscreen",
+                  plugins: [
+                    "advlist", "autolink", "lists", "link", "charmap", "preview", "searchreplace", "visualblocks",
+                    "code", "fullscreen", "insertdatetime", "table", "help", "wordcount", "autoresize",
+                    "pagebreak", "nonbreaking", "directionality"
+                  ],
+                  toolbar_mode: "wrap",
+                  toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | removeformat | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | recuoPrimeiraLinha | table tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells | pagebreak fullscreen",
+                  font_size_formats: "8pt 9pt 10pt 11pt 12pt 14pt 18pt 24pt 30pt 36pt 48pt 60pt 72pt 96pt",
+                  font_family_formats: "Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; Times New Roman=times new roman,times,serif;",
+                  table_toolbar: "tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells | tablecellprops tablecellbackgroundcolor tablecellbordercolor",
+                  table_appearance_options: true,
+                  table_advtab: true,
+                  table_cell_advtab: true,
+                  table_row_advtab: true,
+                  table_column_resizing: "resizetable",
+                  table_default_attributes: {
+                    border: '1'
+                  },
+                  table_default_styles: {
+                    'border-collapse': 'collapse',
+                    'width': '100%'
+                  },
                   content_style: `
                     body {
                       font-family: Arial, sans-serif;
@@ -272,6 +292,9 @@ export default function NovoOficioPage() {
                       box-sizing: border-box;
                     }
                     p { margin: 0 0 8px 0; text-align: justify; }
+                    table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+                    table, th, td { border: 1px solid black; }
+                    th, td { padding: 5px; }
                   `,
                   branding: false,
                   promotion: false,
