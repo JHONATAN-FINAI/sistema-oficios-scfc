@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 interface Oficio {
   id: number;
@@ -106,60 +104,22 @@ export default function PdfPage() {
     });
   }
 
-  async function gerarPdf() {
+  async function registrarEEmitir() {
     if (!oficio) return;
     setGerando(true);
     try {
-      const elemento = document.querySelector(".pagina-oficio") as HTMLElement;
-      if (!elemento) return;
-
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        width: 794,
-        windowWidth: 794,
-      });
-
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth;
-      const pageHeightPx = pdfHeight / ratio;
-
-      let posY = 0;
-      let page = 0;
-
-      while (posY < imgHeight) {
-        if (page > 0) pdf.addPage();
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = imgWidth;
-        sliceCanvas.height = Math.min(pageHeightPx, imgHeight - posY);
-        const ctx = sliceCanvas.getContext("2d")!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(canvas, 0, -posY);
-        pdf.addImage(
-          sliceCanvas.toDataURL("image/jpeg", 0.95),
-          "JPEG", 0, 0, pdfWidth, sliceCanvas.height * ratio
-        );
-        posY += pageHeightPx;
-        page++;
-      }
-
       await fetch(`/api/oficios/${oficio.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "emitido" }),
       });
-
-      pdf.save(`Oficio_${oficio.numero.replace(/\//g, "-")}.pdf`);
+      
+      setGerando(false);
+      setTimeout(() => {
+        window.print();
+      }, 100);
     } catch {
-      alert("Erro ao gerar PDF.");
-    } finally {
+      alert("Erro ao preparar impressão.");
       setGerando(false);
     }
   }
@@ -174,9 +134,17 @@ export default function PdfPage() {
     <>
       <style>{`
         @media print {
+          @page { size: A4 portrait; margin: 15mm 20mm; }
           .no-print { display: none !important; }
-          body { margin: 0; background: white; }
-          .pagina-oficio { box-shadow: none !important; margin: 0 !important; }
+          body { margin: 0; padding: 0; background: white; font-size: 12pt; }
+          .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
+          table { page-break-inside: auto; border-collapse: collapse; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          td, th { page-break-inside: avoid; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+          h1, h2, h3, h4, h5 { page-break-after: avoid; }
+          p { page-break-inside: avoid; }
         }
       `}</style>
 
@@ -192,9 +160,9 @@ export default function PdfPage() {
               <div className="flex gap-3">
                 <button onClick={() => router.back()} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">← Voltar</button>
                 <button onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">Editar</button>
-                <button onClick={() => window.print()} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">Imprimir</button>
-                <button onClick={gerarPdf} disabled={gerando} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {gerando ? "Gerando..." : "Baixar PDF"}
+                <button onClick={() => window.print()} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">Visualizar Impressão</button>
+                <button onClick={registrarEEmitir} disabled={gerando} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  {gerando ? "Carregando..." : "Imprimir / Salvar PDF"}
                 </button>
               </div>
             </div>

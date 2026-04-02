@@ -255,8 +255,12 @@ export default function NovoOficioPage() {
                     "code", "fullscreen", "insertdatetime", "table", "help", "wordcount", "autoresize",
                     "pagebreak", "nonbreaking", "directionality"
                   ],
-                  toolbar_mode: "wrap",
-                  toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | removeformat | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | recuoPrimeiraLinha | table tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells | pagebreak fullscreen",
+                  toolbar_mode: "sliding",
+                  toolbar: [
+                    "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | removeformat",
+                    "alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | recuoPrimeiraLinha | pagebreak fullscreen",
+                    "table tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells"
+                  ],
                   font_size_formats: "8pt 9pt 10pt 11pt 12pt 14pt 18pt 24pt 30pt 36pt 48pt 60pt 72pt 96pt",
                   font_family_formats: "Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; Times New Roman=times new roman,times,serif;",
                   table_toolbar: "tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells | tablecellprops tablecellbackgroundcolor tablecellbordercolor",
