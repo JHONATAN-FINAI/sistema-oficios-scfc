@@ -191,7 +191,7 @@ export default function HistoricoPage() {
                       <td style={{ padding: "12px 24px" }}>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
                           <button onClick={() => router.push(`/oficios/pdf/${oficio.id}`)} style={{ background: "#E3F0FF", color: "#1565C0", border: "none", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>PDF</button>
-                          <button onClick={() => router.push(`/oficios/editor?editar=${oficio.id}`)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Editar</button>
+                          <button onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Editar</button>
                           {oficio.protocolo && (
                             <button onClick={() => { setOficioSelecionado(oficio); setNovoProtocolo(oficio.protocolo || ""); setModalProtocolo(true); }} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Protocolo</button>
                           )}
