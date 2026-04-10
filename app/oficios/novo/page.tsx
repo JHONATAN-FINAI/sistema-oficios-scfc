@@ -174,19 +174,17 @@ export default function NovoOficioPage() {
         <title>Visualizar Impressão - Rascunho</title>
         <style>
           @media print {
-            @page { size: A4 portrait; margin-top: 35mm; margin-bottom: 25mm; margin-left: 20mm; margin-right: 20mm; }
+            @page { size: A4 portrait; margin: 15mm 20mm; }
             body { margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; display: block; }
             .preview-page { position: static !important; }
             h1, h2, h3, h4, h5 { page-break-after: avoid; }
             p { text-align: justify; }
-            .cabecalho-fixed { position: fixed; top: 0; margin-top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; z-index: 999; }
-            .rodape-fixed { position: fixed; bottom: 0; margin-bottom: -25mm; left: 0; width: 100%; height: 25mm; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; z-index: 999; }
+            .oficio-corpo p, .oficio-corpo div { page-break-inside: avoid; }
           }
           @media screen {
             body { background: #525659; display: flex; justify-content: center; padding: 20px; font-family: Arial, sans-serif; }
             .preview-page { background: white; width: 210mm; min-height: 297mm; padding: 15mm 20mm; padding-top: 35mm; padding-bottom: 25mm; box-shadow: 0 4px 8px rgba(0,0,0,0.5); position: relative; box-sizing: border-box; font-size: 12pt; line-height: 1.5; color: #000; }
-            .cabecalho-fixed { position: absolute; top: 15mm; left: 20mm; right: 20mm; text-align: center; }
-            .rodape-fixed { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; width: auto; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; }
+            .rodape-absolute { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; width: auto; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; }
             p { text-align: justify; }
           }
           .cabecalho-img { width: 100%; max-height: 90px; object-fit: contain; object-position: center; }
@@ -194,29 +192,47 @@ export default function NovoOficioPage() {
       </head>
       <body>
         <div class="preview-page">
-          <div class="cabecalho-fixed">
-            <img src="${cabecalhoUrl}" class="cabecalho-img" crossorigin="anonymous" />
-          </div>
-
-          <div class="oficio-corpo">
-            <div style="font-weight: bold; margin-bottom: 16px;">
-              OFÍCIO: ${proximoNumero}
-            </div>
-            <div style="margin-bottom: 16px; text-align: right;">
-              Rondonópolis, ${dataAtual}
-            </div>
-            ${destHtml}
-            <div style="margin-bottom: 24px;">
-              <strong>Assunto:</strong> ${assunto}
-            </div>
-            <div style="text-align: justify;">
-              ${conteudoLimpo}
-            </div>
-          </div>
-
-          <div class="rodape-fixed">
-            Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-          </div>
+          <table style="width: 100%; border: none;">
+            <thead style="display: table-header-group;">
+              <tr>
+                <td style="border: none; padding: 0; padding-bottom: 16px;">
+                  <div style="text-align: center; width: 100%;">
+                    <img src="${cabecalhoUrl}" class="cabecalho-img" crossorigin="anonymous" />
+                  </div>
+                </td>
+              </tr>
+            </thead>
+            <tbody style="display: table-row-group;">
+              <tr>
+                <td style="border: none; padding: 0; vertical-align: top;">
+                  <div class="oficio-corpo">
+                    <div style="font-weight: bold; margin-bottom: 16px;">
+                      OFÍCIO: ${proximoNumero}
+                    </div>
+                    <div style="margin-bottom: 16px; text-align: right;">
+                      Rondonópolis, ${dataAtual}
+                    </div>
+                    ${destHtml}
+                    <div style="margin-bottom: 24px;">
+                      <strong>Assunto:</strong> ${assunto}
+                    </div>
+                    <div style="text-align: justify;">
+                      ${conteudoLimpo}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot style="display: table-footer-group;">
+              <tr>
+                <td style="border: none; padding: 0; padding-top: 32px;">
+                  <div class="rodape-absolute" style="font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px;">
+                    Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
         <script>
           window.onload = () => {
