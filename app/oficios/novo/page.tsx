@@ -357,6 +357,7 @@ export default function NovoOficioPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Conteúdo do Ofício</label>
             <div className="border border-gray-300 rounded-md overflow-hidden">
               <Editor
+                apiKey="vxdv4ca9oja0c9v2x277325dmvcju291qzd80ewa9l1j32xe"
                 onInit={(evt, editor) => {
                   editorRef.current = editor;
                   if (conteudo) editor.setContent(conteudo);
