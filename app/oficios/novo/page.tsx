@@ -19,6 +19,8 @@ interface Destinatario {
   nome: string;
   endereco: string | null;
   cidade: string | null;
+  responsavel: string | null;
+  cargo: string | null;
 }
 
 interface Classificacao {
@@ -139,6 +141,121 @@ export default function NovoOficioPage() {
     editorRef.current.insertContent(montarQuadroHTML(classificacao, valorEstimado));
   }
 
+  function visualizarImpressao() {
+    const conteudoAtual = editorRef.current ? editorRef.current.getContent() : conteudo;
+    const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
+    const dataAtual = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const cabecalhoUrl = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
+    const conteudoLimpo = conteudoAtual.replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "");
+
+    let destHtml = "";
+    if (dest) {
+      const resNome = dest.responsavel || "";
+      const resCargo = dest.cargo ? ` — ${dest.cargo}` : "";
+      const responsavelText = resNome ? `<div><strong>Para:</strong> ${resNome}${resCargo}</div>` : "";
+      
+      const resEnd = dest.endereco || "";
+      const resCid = dest.cidade ? `, ${dest.cidade}` : "";
+      const enderecoText = resEnd ? `<div><strong>Endereço:</strong> ${resEnd}${resCid}</div>` : "";
+
+      destHtml = `
+        <div style="margin-bottom: 16px; line-height: 1.6;">
+          ${responsavelText}
+          <div><strong>Órgão:</strong> ${dest.nome}</div>
+          ${enderecoText}
+        </div>
+      `;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Visualizar Impressão - Rascunho</title>
+        <style>
+          @media print {
+            @page { size: A4 portrait; margin: 15mm 20mm; }
+            body { margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; }
+            table { page-break-inside: auto; border-collapse: collapse; width: 100%; border: none; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            td, th { page-break-inside: avoid; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            h1, h2, h3, h4, h5 { page-break-after: avoid; }
+            p { page-break-inside: avoid; text-align: justify; }
+            .rodape-fixed { position: fixed; bottom: 0px; left: 0; width: 100%; text-align: center; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #555; }
+            .rodape-spacer { height: 40px; }
+          }
+          @media screen {
+            body { background: #525659; display: flex; justify-content: center; padding: 20px; font-family: Arial, sans-serif; }
+            .preview-page { background: white; width: 210mm; min-height: 297mm; padding: 15mm 20mm; box-shadow: 0 4px 8px rgba(0,0,0,0.5); position: relative; box-sizing: border-box; font-size: 12pt; line-height: 1.5; color: #000; }
+            table { width: 100%; border-collapse: collapse; border: none; }
+            .rodape-fixed { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; width: auto; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; }
+            .rodape-spacer { height: 60px; }
+            p { text-align: justify; }
+          }
+          .cabecalho-img { width: 100%; max-height: 90px; object-fit: contain; object-position: center; }
+        </style>
+      </head>
+      <body>
+        <div class="preview-page">
+          <table>
+            <thead>
+              <tr>
+                <td style="border: none; padding: 0; padding-bottom: 16px;">
+                  <div style="text-align: center; margin-bottom: 8px; width: 100%;">
+                    <img src="${cabecalhoUrl}" class="cabecalho-img" crossorigin="anonymous" />
+                  </div>
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border: none; padding: 0;">
+                  <div style="font-weight: bold; margin-bottom: 16px;">
+                    OFÍCIO: ${proximoNumero}
+                  </div>
+                  <div style="margin-bottom: 16px; text-align: right;">
+                    Rondonópolis, ${dataAtual}
+                  </div>
+                  ${destHtml}
+                  <div style="margin-bottom: 24px;">
+                    <strong>Assunto:</strong> ${assunto}
+                  </div>
+                  <div style="text-align: justify;">
+                    ${conteudoLimpo}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style="border: none; padding: 0;"><div class="rodape-spacer"></div></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="rodape-fixed">
+            Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
+          </div>
+        </div>
+        <script>
+          window.onload = () => {
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    const janela = window.open("", "_blank");
+    if (janela) {
+      janela.document.write(html);
+      janela.document.close();
+    }
+  }
+
   async function salvar(gerarPdf = false) {
     if (!assunto.trim()) { alert("Informe o assunto do ofício."); return; }
     const conteudoAtual = editorRef.current ? editorRef.current.getContent() : conteudo;
@@ -240,7 +357,6 @@ export default function NovoOficioPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Conteúdo do Ofício</label>
             <div className="border border-gray-300 rounded-md overflow-hidden">
               <Editor
-                apiKey="vxdv4ca9oja0c9v2x277325dmvcju291qzd80ewa9l1j32xe"
                 onInit={(evt, editor) => {
                   editorRef.current = editor;
                   if (conteudo) editor.setContent(conteudo);
@@ -249,7 +365,7 @@ export default function NovoOficioPage() {
                 init={{
                   height: 900,
                   menubar: "file edit view insert format tools table help",
-                  language: "pt_BR",
+                  language: "pt-BR",
                   plugins: [
                     "advlist", "autolink", "lists", "link", "charmap", "preview", "searchreplace", "visualblocks",
                     "code", "fullscreen", "insertdatetime", "table", "help", "wordcount", "autoresize",
@@ -353,6 +469,7 @@ export default function NovoOficioPage() {
           <div className="flex justify-between items-center pt-2">
             <button onClick={() => router.back()} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
             <div className="flex gap-3">
+              <button onClick={visualizarImpressao} type="button" className="px-5 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Visualizar Impressão</button>
               <button onClick={() => salvar(false)} disabled={salvando} className="px-5 py-2 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800 disabled:opacity-50">{salvando ? "Salvando..." : "Salvar Rascunho"}</button>
               <button onClick={() => salvar(true)} disabled={salvando} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">{salvando ? "Salvando..." : "Salvar e Gerar PDF"}</button>
             </div>
