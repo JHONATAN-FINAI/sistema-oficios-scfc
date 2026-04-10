@@ -134,26 +134,18 @@ export default function PdfPage() {
     <>
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 15mm 20mm; }
+          @page { size: A4 portrait; margin-top: 35mm; margin-bottom: 25mm; margin-left: 20mm; margin-right: 20mm; }
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; background: white; font-size: 12pt; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
-          table { page-break-inside: auto; border-collapse: collapse; width: 100%; border: none; }
-          td, th { vertical-align: top; }
-          thead { display: table-header-group; }
-          tfoot { display: table-footer-group; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          .rodape-fixed {
-            position: fixed;
-            bottom: 0px;
-            left: 0;
-            width: 100%;
-          }
-          .rodape-spacer { height: 40px; }
+          .cabecalho-fixed { position: fixed; top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; }
+          .rodape-fixed { position: fixed; bottom: -25mm; left: 0; width: 100%; height: 25mm; }
         }
         @media screen {
+          .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }
+          .cabecalho-fixed { position: absolute; top: 15mm; left: 20mm; right: 20mm; }
           .rodape-fixed { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; width: auto; }
-          .rodape-spacer { height: 60px; }
         }
       `}</style>
 
@@ -180,62 +172,46 @@ export default function PdfPage() {
 
         <div className="flex flex-col items-center py-6">
           <div className="pagina-oficio" style={{ ...estiloBase, boxShadow: "0 2px 16px rgba(0,0,0,0.12)" }}>
-            <table style={{ width: "100%", border: "none" }}>
-              <thead>
-                <tr>
-                  <td style={{ border: "none", padding: 0, paddingBottom: "16px" }}>
-                    <Cabecalho />
-                  </td>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ border: "none", padding: 0 }}>
-                    <div style={{ fontWeight: "bold", marginBottom: "16px" }}>
-                      OFÍCIO: {oficio.numero}
-                    </div>
+            <div className="cabecalho-fixed">
+              <Cabecalho />
+            </div>
 
-                    <div style={{ marginBottom: "16px", textAlign: "right" }}>
-                      Rondonópolis, {formatarData(oficio.criadoEm)}
-                    </div>
+            <div className="oficio-corpo">
+              <div style={{ fontWeight: "bold", marginBottom: "16px" }}>
+                OFÍCIO: {oficio.numero}
+              </div>
 
-                    {dest && (
-                      <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
-                        {dest.responsavel && (
-                          <div><strong>Para:</strong> {dest.responsavel}{dest.cargo ? ` — ${dest.cargo}` : ""}</div>
-                        )}
-                        <div><strong>Órgão:</strong> {dest.nome}</div>
-                        {dest.endereco && (
-                          <div><strong>Endereço:</strong> {dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
-                        )}
-                      </div>
-                    )}
+              <div style={{ marginBottom: "16px", textAlign: "right" }}>
+                Rondonópolis, {formatarData(oficio.criadoEm)}
+              </div>
 
-                    <div style={{ marginBottom: "24px" }}>
-                      <strong>Assunto:</strong> {oficio.assunto}
-                    </div>
+              {dest && (
+                <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
+                  {dest.responsavel && (
+                    <div><strong>Para:</strong> {dest.responsavel}{dest.cargo ? ` — ${dest.cargo}` : ""}</div>
+                  )}
+                  <div><strong>Órgão:</strong> {dest.nome}</div>
+                  {dest.endereco && (
+                    <div><strong>Endereço:</strong> {dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
+                  )}
+                </div>
+              )}
 
-                    <div
-                      style={{ textAlign: "justify" }}
-                      dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
-                    />
+              <div style={{ marginBottom: "24px" }}>
+                <strong>Assunto:</strong> {oficio.assunto}
+              </div>
 
-                    {oficio.protocolo && (
-                      <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>
-                        Protocolo: {oficio.protocolo}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td style={{ border: "none", padding: 0 }}>
-                    <div className="rodape-spacer"></div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+              <div
+                style={{ textAlign: "justify" }}
+                dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
+              />
+
+              {oficio.protocolo && (
+                <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>
+                  Protocolo: {oficio.protocolo}
+                </div>
+              )}
+            </div>
             
             <div className="rodape-fixed">
               <Rodape />
