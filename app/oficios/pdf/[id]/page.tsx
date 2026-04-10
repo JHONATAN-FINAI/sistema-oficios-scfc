@@ -35,7 +35,6 @@ const estiloBase: React.CSSProperties = {
   lineHeight: "1.5",
   color: "#000",
   boxSizing: "border-box",
-  position: "relative",
 };
 
 function Cabecalho() {
@@ -136,11 +135,11 @@ export default function PdfPage() {
         @media print {
           @page { size: A4 portrait; margin-top: 35mm; margin-bottom: 25mm; margin-left: 20mm; margin-right: 20mm; }
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; background: white; font-size: 12pt; }
-          .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
+          body { margin: 0; padding: 0; background: white; font-size: 12pt; display: block; }
+          .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          .cabecalho-fixed { position: fixed; top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; }
-          .rodape-fixed { position: fixed; bottom: -25mm; left: 0; width: 100%; height: 25mm; }
+          .cabecalho-fixed { position: fixed; top: 0; margin-top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; z-index: 999; }
+          .rodape-fixed { position: fixed; bottom: 0; margin-bottom: -25mm; left: 0; width: 100%; height: 25mm; text-align: center; z-index: 999; }
         }
         @media screen {
           .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }

@@ -175,11 +175,12 @@ export default function NovoOficioPage() {
         <style>
           @media print {
             @page { size: A4 portrait; margin-top: 35mm; margin-bottom: 25mm; margin-left: 20mm; margin-right: 20mm; }
-            body { margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; }
+            body { margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; display: block; }
+            .preview-page { position: static !important; }
             h1, h2, h3, h4, h5 { page-break-after: avoid; }
             p { text-align: justify; }
-            .cabecalho-fixed { position: fixed; top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; }
-            .rodape-fixed { position: fixed; bottom: -25mm; left: 0; width: 100%; height: 25mm; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; }
+            .cabecalho-fixed { position: fixed; top: 0; margin-top: -35mm; left: 0; width: 100%; height: 35mm; text-align: center; z-index: 999; }
+            .rodape-fixed { position: fixed; bottom: 0; margin-bottom: -25mm; left: 0; width: 100%; height: 25mm; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; z-index: 999; }
           }
           @media screen {
             body { background: #525659; display: flex; justify-content: center; padding: 20px; font-family: Arial, sans-serif; }
