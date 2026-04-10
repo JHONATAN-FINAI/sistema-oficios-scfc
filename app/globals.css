@@ -25,3 +25,11 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Hide TinyMCE 'domain not registered' and 'API key' warning banners */
+.tox-notifications-container {
+  display: none !important;
+}
+.tox-notification {
+  display: none !important;
+}

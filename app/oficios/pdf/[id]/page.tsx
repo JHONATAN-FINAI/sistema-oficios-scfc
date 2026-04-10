@@ -139,12 +139,10 @@ export default function PdfPage() {
           body { margin: 0; padding: 0; background: white; font-size: 12pt; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
           table { page-break-inside: auto; border-collapse: collapse; width: 100%; border: none; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          td, th { page-break-inside: avoid; }
+          td, th { vertical-align: top; }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          p { page-break-inside: avoid; }
           .rodape-fixed {
             position: fixed;
             bottom: 0px;

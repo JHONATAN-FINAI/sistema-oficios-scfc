@@ -177,12 +177,11 @@ export default function NovoOficioPage() {
             @page { size: A4 portrait; margin: 15mm 20mm; }
             body { margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; }
             table { page-break-inside: auto; border-collapse: collapse; width: 100%; border: none; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            td, th { page-break-inside: avoid; }
+            td, th { vertical-align: top; }
             thead { display: table-header-group; }
             tfoot { display: table-footer-group; }
             h1, h2, h3, h4, h5 { page-break-after: avoid; }
-            p { page-break-inside: avoid; text-align: justify; }
+            p { text-align: justify; }
             .rodape-fixed { position: fixed; bottom: 0px; left: 0; width: 100%; text-align: center; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #555; }
             .rodape-spacer { height: 40px; }
           }
