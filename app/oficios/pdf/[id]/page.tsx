@@ -133,19 +133,24 @@ export default function PdfPage() {
     <>
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 15mm 20mm; }
+          @page { size: A4 portrait; margin: 40mm 20mm 25mm 20mm; }
           .no-print { display: none !important; }
           body { margin: 0; padding: 0; background: white; font-size: 12pt; display: block; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
           .oficio-corpo table, .oficio-corpo figure { page-break-inside: avoid; }
-          .rodape-absolute { position: fixed !important; bottom: 0; left: 0; width: 100%; z-index: 1000; background: white; }
-          .espaco-rodape { display: block !important; height: 80px; }
+          
+          /* Fixed elements mapped cleanly onto the native printed page margins */
+          .print-header-fixed { position: fixed !important; top: -35mm; left: 0; width: 100%; display: block !important; }
+          .print-footer-fixed { position: fixed !important; bottom: -20mm; left: 0; width: 100%; display: block !important; }
+          
+          /* Hide screen components in print */
+          .screen-header, .screen-footer { display: none !important; }
         }
         @media screen {
           .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }
-          .rodape-absolute { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; }
-          .espaco-rodape { display: none; }
+          .screen-footer { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; }
+          .print-header-fixed, .print-footer-fixed { display: none !important; }
         }
       `}</style>
 
@@ -172,68 +177,64 @@ export default function PdfPage() {
 
         <div className="flex flex-col items-center py-6">
           <div className="pagina-oficio" style={{ ...estiloBase, boxShadow: "0 2px 16px rgba(0,0,0,0.12)" }}>
-            <div className="rodape-absolute">
+            
+            {/* Screen Header */}
+            <div className="screen-header" style={{ paddingBottom: "16px" }}>
+              <Cabecalho />
+            </div>
+
+            {/* Print Header (Repeats on every page exactly in the top margin) */}
+            <div className="print-header-fixed">
+              <Cabecalho />
+            </div>
+
+            <div className="oficio-corpo">
+              <div style={{ fontWeight: "bold", marginBottom: "16px" }}>
+                OFÍCIO: {oficio.numero}
+              </div>
+
+              <div style={{ marginBottom: "16px", textAlign: "right" }}>
+                Rondonópolis, {formatarData(oficio.criadoEm)}
+              </div>
+
+              {dest && (
+                <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
+                  {dest.responsavel && (
+                    <div><strong>Para:</strong> {dest.responsavel}{dest.cargo ? ` — ${dest.cargo}` : ""}</div>
+                  )}
+                  <div><strong>Órgão:</strong> {dest.nome}</div>
+                  {dest.endereco && (
+                    <div><strong>Endereço:</strong> {dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ marginBottom: "24px" }}>
+                <strong>Assunto:</strong> {oficio.assunto}
+              </div>
+
+              <div
+                style={{ textAlign: "justify" }}
+                dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
+              />
+
+              {oficio.protocolo && (
+                <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>
+                  Protocolo: {oficio.protocolo}
+                </div>
+              )}
+            </div>
+
+            {/* Screen Footer */}
+            <div className="screen-footer">
               <Rodape />
             </div>
 
-            <table style={{ width: "100%", border: "none" }}>
-              <thead style={{ display: "table-header-group" }}>
-                <tr>
-                  <td style={{ border: "none", padding: 0, paddingBottom: "16px" }}>
-                    <Cabecalho />
-                  </td>
-                </tr>
-              </thead>
-              <tbody style={{ display: "table-row-group" }}>
-                <tr>
-                  <td style={{ border: "none", padding: 0, verticalAlign: "top" }}>
-                    <div className="oficio-corpo">
-                      <div style={{ fontWeight: "bold", marginBottom: "16px" }}>
-                        OFÍCIO: {oficio.numero}
-                      </div>
+            {/* Print Footer (Repeats on every page exactly in the bottom margin) */}
+            <div className="print-footer-fixed">
+              <Rodape />
+            </div>
 
-                      <div style={{ marginBottom: "16px", textAlign: "right" }}>
-                        Rondonópolis, {formatarData(oficio.criadoEm)}
-                      </div>
-
-                      {dest && (
-                        <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
-                          {dest.responsavel && (
-                            <div><strong>Para:</strong> {dest.responsavel}{dest.cargo ? ` — ${dest.cargo}` : ""}</div>
-                          )}
-                          <div><strong>Órgão:</strong> {dest.nome}</div>
-                          {dest.endereco && (
-                            <div><strong>Endereço:</strong> {dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
-                          )}
-                        </div>
-                      )}
-
-                      <div style={{ marginBottom: "24px" }}>
-                        <strong>Assunto:</strong> {oficio.assunto}
-                      </div>
-
-                      <div
-                        style={{ textAlign: "justify" }}
-                        dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
-                      />
-
-                      {oficio.protocolo && (
-                        <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>
-                          Protocolo: {oficio.protocolo}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot style={{ display: "table-footer-group" }}>
-                <tr>
-                  <td style={{ border: "none", padding: 0, paddingTop: "32px" }}>
-                    <div className="espaco-rodape"></div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
           </div>
         </div>
       </div>
