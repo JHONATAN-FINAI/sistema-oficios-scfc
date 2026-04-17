@@ -138,8 +138,9 @@ export default function PdfPage() {
           body { margin: 0; padding: 0; background: white; font-size: 12pt; display: block; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          .rodape-absolute { position: fixed !important; bottom: 0; left: 0; width: 100%; }
-          .espaco-rodape { display: block !important; height: 50px; }
+          .oficio-corpo table, .oficio-corpo figure { page-break-inside: avoid; }
+          .rodape-absolute { position: fixed !important; bottom: 0; left: 0; width: 100%; z-index: 1000; background: white; }
+          .espaco-rodape { display: block !important; height: 80px; }
         }
         @media screen {
           .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }
@@ -171,6 +172,10 @@ export default function PdfPage() {
 
         <div className="flex flex-col items-center py-6">
           <div className="pagina-oficio" style={{ ...estiloBase, boxShadow: "0 2px 16px rgba(0,0,0,0.12)" }}>
+            <div className="rodape-absolute">
+              <Rodape />
+            </div>
+
             <table style={{ width: "100%", border: "none" }}>
               <thead style={{ display: "table-header-group" }}>
                 <tr>
@@ -224,9 +229,6 @@ export default function PdfPage() {
               <tfoot style={{ display: "table-footer-group" }}>
                 <tr>
                   <td style={{ border: "none", padding: 0, paddingTop: "32px" }}>
-                    <div className="rodape-absolute">
-                      <Rodape />
-                    </div>
                     <div className="espaco-rodape"></div>
                   </td>
                 </tr>
