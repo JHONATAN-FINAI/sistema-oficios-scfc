@@ -135,7 +135,7 @@ export default function PdfPage() {
         @media print {
           @page { size: A4 portrait; margin: 40mm 20mm 25mm 20mm; }
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; background: white; font-size: 12pt; display: block; }
+          body, .min-h-screen, .flex { display: block !important; margin: 0; padding: 0; background: white; font-size: 12pt; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
           .oficio-corpo table, .oficio-corpo figure { page-break-inside: avoid; }
