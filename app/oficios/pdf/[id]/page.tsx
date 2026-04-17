@@ -138,11 +138,13 @@ export default function PdfPage() {
           body { margin: 0; padding: 0; background: white; font-size: 12pt; display: block; }
           .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
           h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          .oficio-corpo p, .oficio-corpo div { page-break-inside: avoid; }
+          .rodape-absolute { position: fixed !important; bottom: 0; left: 0; width: 100%; }
+          .espaco-rodape { display: block !important; height: 50px; }
         }
         @media screen {
           .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }
           .rodape-absolute { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; }
+          .espaco-rodape { display: none; }
         }
       `}</style>
 
@@ -225,6 +227,7 @@ export default function PdfPage() {
                     <div className="rodape-absolute">
                       <Rodape />
                     </div>
+                    <div className="espaco-rodape"></div>
                   </td>
                 </tr>
               </tfoot>
