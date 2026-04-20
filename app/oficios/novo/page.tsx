@@ -146,102 +146,131 @@ export default function NovoOficioPage() {
     const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
     const dataAtual = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
     const cabecalhoUrl = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
-    const conteudoLimpo = conteudoAtual.replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "");
+    const conteudoLimpo = conteudoAtual
+      .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
+      .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
 
-    let destHtml = "";
+    let destinatarioHtml = "";
     if (dest) {
-      const resNome = dest.responsavel || "";
-      const resCargo = dest.cargo ? ` — ${dest.cargo}` : "";
-      const responsavelText = resNome ? `<div><strong>Para:</strong> ${resNome}${resCargo}</div>` : "";
-      
-      const resEnd = dest.endereco || "";
-      const resCid = dest.cidade ? `, ${dest.cidade}` : "";
-      const enderecoText = resEnd ? `<div><strong>Endereço:</strong> ${resEnd}${resCid}</div>` : "";
-
-      destHtml = `
-        <div style="margin-bottom: 16px; line-height: 1.6;">
-          ${responsavelText}
-          <div><strong>Órgão:</strong> ${dest.nome}</div>
-          ${enderecoText}
-        </div>
-      `;
+      if (dest.responsavel) {
+        destinatarioHtml += `<div>Ao Senhor</div>`;
+        destinatarioHtml += `<div><strong>${dest.responsavel}</strong></div>`;
+        if (dest.cargo) destinatarioHtml += `<div>${dest.cargo}</div>`;
+      }
+      destinatarioHtml += `<div><strong>${dest.nome}</strong></div>`;
+      if (dest.endereco) {
+        destinatarioHtml += `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>`;
+      }
     }
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Visualizar Impressão - Rascunho</title>
-        <style>
-          @media print {
-            @page { size: A4 portrait; margin: 40mm 20mm 25mm 20mm; }
-            body, .preview-page { display: block !important; margin: 0; padding: 0; background: white; font-size: 12pt; font-family: Arial, sans-serif; color: #000; }
-            .preview-page { position: static !important; width: 100% !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
-            h1, h2, h3, h4, h5 { page-break-after: avoid; }
-            p { text-align: justify; }
-            .oficio-corpo table, .oficio-corpo figure { page-break-inside: avoid; }
-            .print-header-fixed { position: fixed !important; top: -35mm; left: 0; width: 100%; display: block !important; }
-            .print-footer-fixed { position: fixed !important; bottom: -20mm; left: 0; width: 100%; display: block !important; }
-            .screen-header, .screen-footer { display: none !important; }
-          }
-          @media screen {
-            body { background: #525659; display: flex; justify-content: center; padding: 20px; font-family: Arial, sans-serif; }
-            .preview-page { background: white; width: 210mm; min-height: 297mm; padding: 35mm 20mm 25mm 20mm; box-shadow: 0 4px 8px rgba(0,0,0,0.5); position: relative; box-sizing: border-box; font-size: 12pt; line-height: 1.5; color: #000; }
-            .screen-footer { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; width: auto; font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px; }
-            .print-header-fixed, .print-footer-fixed { display: none !important; }
-            p { text-align: justify; }
-          }
-          .cabecalho-img { width: 100%; max-height: 90px; object-fit: contain; object-position: center; }
-        </style>
-      </head>
-      <body>
-        <div class="preview-page">
-          <div class="screen-header" style="text-align: center; width: 100%; padding-bottom: 16px;">
-            <img src="${cabecalhoUrl}" class="cabecalho-img" crossorigin="anonymous" />
-          </div>
-          <div class="print-header-fixed" style="text-align: center; width: 100%;">
-            <img src="${cabecalhoUrl}" class="cabecalho-img" crossorigin="anonymous" />
-          </div>
-          
-          <div class="oficio-corpo">
-            <div style="font-weight: bold; margin-bottom: 16px;">
-              OFÍCIO: ${proximoNumero}
-            </div>
-            <div style="margin-bottom: 16px; text-align: right;">
-              Rondonópolis, ${dataAtual}
-            </div>
-            ${destHtml}
-            <div style="margin-bottom: 24px;">
-              <strong>Assunto:</strong> ${assunto}
-            </div>
-            <div style="text-align: justify;">
-              ${conteudoLimpo}
-            </div>
-          </div>
-          
-          <div class="screen-footer">
-            Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-          </div>
-          <div class="print-footer-fixed" style="font-size: 8pt; color: #555; text-align: center; border-top: 1px solid #999; padding-top: 4px;">
-            Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-          </div>
-        </div>
-        <script>
-          window.onload = () => {
-            setTimeout(() => {
-              window.print();
-            }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `;
+    const numeroExibir = modoEdicao ? (proximoNumero || "RASCUNHO") : proximoNumero;
 
-    const janela = window.open("", "_blank");
-    if (janela) {
-      janela.document.write(html);
-      janela.document.close();
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ofício ${numeroExibir}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @page { size: A4 portrait; margin: 0; }
+
+    html, body {
+      width: 210mm;
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #000;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
+
+    /* Tabela de layout: thead e tfoot repetem em cada página */
+    table.layout {
+      width: 210mm;
+      border-collapse: collapse;
+    }
+    thead.cabecalho td {
+      padding: 8mm 20mm 4mm 30mm;
+      border-bottom: 1px solid #ccc;
+      text-align: center;
+      height: 45mm;
+      vertical-align: middle;
+    }
+    thead.cabecalho img {
+      max-height: 35mm;
+      max-width: 150mm;
+      object-fit: contain;
+    }
+    tfoot.rodape td {
+      padding: 3mm 20mm 6mm 30mm;
+      border-top: 1px solid #ccc;
+      font-size: 8pt;
+      color: #555;
+      text-align: center;
+      height: 18mm;
+      vertical-align: middle;
+    }
+    tbody td.corpo-celula {
+      padding: 8mm 20mm 8mm 30mm;
+      vertical-align: top;
+    }
+
+    .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+    .data-oficio { text-align: right; margin-bottom: 18px; }
+    .destinatario { margin-bottom: 18px; line-height: 1.7; }
+    .assunto { font-weight: bold; margin-bottom: 20px; }
+    .corpo { text-align: justify; }
+    .corpo p { margin: 0 0 8px 0; text-align: justify; }
+    .corpo br { display: block; margin-bottom: 6px; }
+    .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+    .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+    .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+  </style>
+</head>
+<body>
+<table class="layout">
+  <thead class="cabecalho">
+    <tr><td><img src="${cabecalhoUrl}" crossorigin="anonymous" /></td></tr>
+  </thead>
+  <tfoot class="rodape">
+    <tr><td>Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000</td></tr>
+  </tfoot>
+  <tbody>
+    <tr>
+      <td class="corpo-celula">
+        <div class="numero-oficio">OFÍCIO Nº ${numeroExibir}</div>
+        <div class="data-oficio">Rondonópolis, ${dataAtual}.</div>
+        ${destinatarioHtml ? `<div class="destinatario">${destinatarioHtml}</div>` : ""}
+        ${assunto ? `<div class="assunto">Assunto: ${assunto}.</div>` : ""}
+        <div class="corpo">${conteudoLimpo}</div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>`;
+
+    const janela = window.open("", "_blank", "width=960,height=800");
+    if (!janela) {
+      alert("Permita pop-ups para este site e tente novamente.");
+      return;
+    }
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
+
+    janela.onload = () => {
+      const img = janela.document.querySelector("img");
+      const imprimir = () => setTimeout(() => janela.print(), 400);
+      if (img && !img.complete) {
+        img.onload = imprimir;
+        img.onerror = imprimir;
+      } else {
+        imprimir();
+      }
+    };
   }
 
   async function salvar(gerarPdf = false) {

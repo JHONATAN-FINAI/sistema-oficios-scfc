@@ -27,32 +27,37 @@ function montarHtmlImpressao(params: {
 }) {
   const { numero, dataHoje, dest, assunto, conteudo } = params;
 
-  const destinatarioHtml = dest ? `
-    <div style="margin-bottom:14px;line-height:1.6;">
-      ${dest.responsavel
-        ? `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>${dest.cargo ? `<div>${dest.cargo}</div>` : ""}<div>${dest.nome}</div>`
-        : `<div><strong>${dest.nome}</strong></div>`
-      }
-      ${dest.endereco ? `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>` : ""}
-    </div>` : "";
+  let destinatarioHtml = "";
+  if (dest) {
+    if (dest.responsavel) {
+      destinatarioHtml += `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>`;
+      if (dest.cargo) destinatarioHtml += `<div>${dest.cargo}</div>`;
+    }
+    destinatarioHtml += `<div><strong>${dest.nome}</strong></div>`;
+    if (dest.endereco) destinatarioHtml += `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>`;
+    destinatarioHtml = `<div class="destinatario">${destinatarioHtml}</div>`;
+  }
 
   const assuntoHtml = assunto
-    ? `<div style="margin-bottom:18px;font-weight:bold;">Assunto: ${assunto}.</div>`
+    ? `<div class="assunto">Assunto: ${assunto}.</div>`
     : "";
 
+  // Limpa marcadores do editor antes de imprimir
+  const conteudoLimpo = conteudo
+    .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
+    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
+
   return `<!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <style>
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
 
-  @page {
-    size: A4 portrait;
-    margin: 175px 76px 55px 114px;
-  }
+  @page { size: A4 portrait; margin: 0; }
 
-  body {
+  html, body {
+    width: 210mm;
     font-family: Arial, sans-serif;
     font-size: 12pt;
     line-height: 1.5;
@@ -60,77 +65,71 @@ function montarHtmlImpressao(params: {
     background: white;
   }
 
-  /* Cabeçalho repetido em todas as páginas */
-  #cabecalho {
-    position: fixed;
-    top: -165px;
-    left: -114px;
-    right: -76px;
-    height: 155px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-bottom: 1px solid #e0e0e0;
-    background: white;
-    padding: 12px 76px 8px 114px;
-  }
+  table.layout { width: 210mm; border-collapse: collapse; }
 
-  #cabecalho img {
-    max-height: 130px;
-    max-width: 100%;
+  thead.cabecalho td {
+    padding: 8mm 20mm 4mm 30mm;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+    height: 45mm;
+    vertical-align: middle;
+  }
+  thead.cabecalho img {
+    max-height: 35mm;
+    max-width: 150mm;
     object-fit: contain;
   }
-
-  /* Rodapé repetido em todas as páginas */
-  #rodape {
-    position: fixed;
-    bottom: -45px;
-    left: -114px;
-    right: -76px;
-    height: 36px;
+  tfoot.rodape td {
+    padding: 3mm 20mm 6mm 30mm;
     border-top: 1px solid #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     font-size: 8pt;
     color: #555;
-    background: white;
-    padding: 0 76px 0 114px;
+    text-align: center;
+    height: 18mm;
+    vertical-align: middle;
+  }
+  tbody td.corpo-celula {
+    padding: 8mm 20mm 8mm 30mm;
+    vertical-align: top;
   }
 
-  /* Conteúdo */
-  #conteudo {
-    width: 100%;
-  }
-
-  p { margin: 0 0 8px 0; text-align: justify; }
-  div > br { display: block; margin-bottom: 8px; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  td, th { border: 1px solid #000; padding: 3px 8px; font-size: 10pt; }
-  h1, h2, h3 { margin: 0 0 8px 0; }
+  .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+  .data-oficio { text-align: right; margin-bottom: 18px; }
+  .destinatario { margin-bottom: 18px; line-height: 1.7; }
+  .assunto { font-weight: bold; margin-bottom: 20px; }
+  .corpo { text-align: justify; }
+  .corpo p { margin: 0 0 8px 0; text-align: justify; }
+  .corpo br { display: block; margin-bottom: 6px; }
+  /* Tabelas dentro do conteudo do oficio */
+  .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+  .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+  .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
 </style>
 </head>
 <body>
-
-  <div id="cabecalho">
-    <img src="${CABECALHO_URL}" crossorigin="anonymous" />
-  </div>
-
-  <div id="rodape">
-    Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-  </div>
-
-  <div id="conteudo">
-    <div style="font-weight:bold;margin-bottom:10px;">OFÍCIO Nº ${numero}</div>
-    <div style="text-align:right;margin-bottom:14px;">Rondonópolis, ${dataHoje}.</div>
-    ${destinatarioHtml}
-    ${assuntoHtml}
-    ${conteudo}
-  </div>
-
+<table class="layout">
+  <thead class="cabecalho">
+    <tr><td><img src="${CABECALHO_URL}" crossorigin="anonymous" /></td></tr>
+  </thead>
+  <tfoot class="rodape">
+    <tr><td>Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000</td></tr>
+  </tfoot>
+  <tbody>
+    <tr>
+      <td class="corpo-celula">
+        <div class="numero-oficio">OFÍCIO Nº ${numero}</div>
+        <div class="data-oficio">Rondonópolis, ${dataHoje}.</div>
+        ${destinatarioHtml}
+        ${assuntoHtml}
+        <div class="corpo">${conteudoLimpo}</div>
+      </td>
+    </tr>
+  </tbody>
+</table>
 </body>
 </html>`;
 }
+
 
 export default function EditorPage() {
   const { status } = useSession();
@@ -296,21 +295,25 @@ export default function EditorPage() {
 
       const html = montarHtmlImpressao({ numero, dataHoje, dest, assunto, conteudo });
 
-      const res = await fetch("/api/pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html }),
-      });
+      const janela = window.open("", "_blank", "width=900,height=700");
+      if (!janela) {
+        alert("Permita pop-ups para este site e tente novamente.");
+        return;
+      }
+      janela.document.open();
+      janela.document.write(html);
+      janela.document.close();
 
-      if (!res.ok) throw new Error(await res.text());
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Oficio_${numero.replace(/\//g, "-")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      janela.onload = () => {
+        const img = janela.document.querySelector("img");
+        const imprimir = () => setTimeout(() => janela.print(), 300);
+        if (img && !img.complete) {
+          img.onload = imprimir;
+          img.onerror = imprimir;
+        } else {
+          imprimir();
+        }
+      };
     } catch (e) {
       console.error(e);
       alert("Erro ao gerar PDF.");

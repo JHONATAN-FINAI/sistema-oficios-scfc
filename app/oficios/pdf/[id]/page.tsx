@@ -11,6 +11,7 @@ interface Oficio {
   ano: number;
   assunto: string;
   conteudo: string;
+  status: string;
   protocolo: string | null;
   criadoEm: string;
   destinatario: {
@@ -23,50 +24,165 @@ interface Oficio {
   } | null;
 }
 
-const CABECALHO_URL = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
+const CABECALHO_URL =
+  "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
 
-const estiloBase: React.CSSProperties = {
-  width: "794px",
-  minHeight: "1123px",
-  backgroundColor: "#fff",
-  padding: "10mm 20mm 25mm 20mm",
-  fontFamily: "Arial, sans-serif",
-  fontSize: "12pt",
-  lineHeight: "1.5",
-  color: "#000",
-  boxSizing: "border-box",
-};
-
-function Cabecalho() {
-  return (
-    <div style={{ textAlign: "center", marginBottom: "8px", width: "100%" }}>
-      <img
-        src={CABECALHO_URL}
-        alt="Cabeçalho"
-        crossOrigin="anonymous"
-        style={{ width: "100%", maxHeight: "90px", objectFit: "contain", objectPosition: "center" }}
-      />
-    </div>
-  );
-}
-
-function Rodape() {
-  return (
-    <div style={{
-      marginTop: "40px",
-      borderTop: "1px solid #999",
-      paddingTop: "4px",
-      fontSize: "8pt",
-      color: "#555",
-      textAlign: "center",
-    }}>
-      Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000
-    </div>
-  );
-}
+const RODAPE_TEXTO =
+  "Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000";
 
 function limparConteudo(html: string): string {
-  return html.replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "");
+  return html
+    .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
+    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
+}
+
+function formatarData(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function montarDestinatarioHtml(dest: Oficio["destinatario"]): string {
+  if (!dest) return "";
+  let html = "";
+  if (dest.responsavel) {
+    html += `<div>Ao Senhor</div>`;
+    html += `<div><strong>${dest.responsavel}</strong></div>`;
+    if (dest.cargo) html += `<div>${dest.cargo}</div>`;
+  }
+  html += `<div><strong>${dest.nome}</strong></div>`;
+  if (dest.endereco) {
+    html += `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>`;
+  }
+  return `<div class="destinatario">${html}</div>`;
+}
+
+// Gera o HTML completo para impressão usando <table> com thead/tfoot
+// para repetição automática de cabeçalho e rodapé em cada página
+function gerarHtmlImpressao(oficio: Oficio): string {
+  const dest = oficio.destinatario;
+  const conteudoLimpo = limparConteudo(oficio.conteudo);
+  const dataOficio = formatarData(oficio.criadoEm);
+  const destinatarioHtml = montarDestinatarioHtml(dest);
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ofício ${oficio.numero}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    html, body {
+      width: 210mm;
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #000;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /*
+     * Técnica da table com thead/tfoot:
+     * thead se repete no topo de cada página impressa
+     * tfoot se repete no rodapé de cada página impressa
+     */
+    table.layout {
+      width: 210mm;
+      border-collapse: collapse;
+    }
+
+    /* Cabeçalho: repetido em cada página */
+    thead.cabecalho td {
+      padding: 8mm 20mm 4mm 30mm;
+      border-bottom: 1px solid #ccc;
+      text-align: center;
+      height: 45mm;
+      vertical-align: middle;
+    }
+    thead.cabecalho img {
+      max-height: 35mm;
+      max-width: 150mm;
+      object-fit: contain;
+    }
+
+    /* Rodapé: repetido em cada página */
+    tfoot.rodape td {
+      padding: 3mm 20mm 6mm 30mm;
+      border-top: 1px solid #ccc;
+      font-size: 8pt;
+      color: #555;
+      text-align: center;
+      height: 18mm;
+      vertical-align: middle;
+    }
+
+    /* Conteúdo do ofício */
+    tbody td.corpo-celula {
+      padding: 8mm 20mm 8mm 30mm;
+      vertical-align: top;
+    }
+
+    .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+    .data-oficio { text-align: right; margin-bottom: 18px; }
+    .destinatario { margin-bottom: 18px; line-height: 1.7; }
+    .assunto { font-weight: bold; margin-bottom: 20px; }
+
+    .corpo { text-align: justify; }
+    .corpo p { margin: 0 0 8px 0; text-align: justify; }
+    .corpo br { display: block; margin-bottom: 6px; }
+    .corpo table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 10pt;
+    }
+    .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+    .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+  </style>
+</head>
+<body>
+
+<table class="layout">
+  <thead class="cabecalho">
+    <tr>
+      <td>
+        <img src="${CABECALHO_URL}" crossorigin="anonymous" />
+      </td>
+    </tr>
+  </thead>
+
+  <tfoot class="rodape">
+    <tr>
+      <td>${RODAPE_TEXTO}</td>
+    </tr>
+  </tfoot>
+
+  <tbody>
+    <tr>
+      <td class="corpo-celula">
+        <div class="numero-oficio">OFÍCIO Nº ${oficio.numero}</div>
+        <div class="data-oficio">Rondonópolis, ${dataOficio}.</div>
+        ${destinatarioHtml}
+        ${oficio.assunto ? `<div class="assunto">Assunto: ${oficio.assunto}.</div>` : ""}
+        <div class="corpo">${conteudoLimpo}</div>
+        ${oficio.protocolo ? `<div style="margin-top:16px;font-size:10pt;color:#555;">Protocolo: ${oficio.protocolo}</div>` : ""}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>`;
 }
 
 export default function PdfPage() {
@@ -77,7 +193,7 @@ export default function PdfPage() {
 
   const [oficio, setOficio] = useState<Oficio | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [gerando, setGerando] = useState(false);
+  const [emitindo, setEmitindo] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -90,36 +206,54 @@ export default function PdfPage() {
   async function carregarOficio() {
     try {
       const res = await fetch(`/api/oficios/${id}`);
-      if (!res.ok) { router.push("/oficios/historico"); return; }
+      if (!res.ok) {
+        router.push("/oficios/historico");
+        return;
+      }
       setOficio(await res.json());
     } finally {
       setCarregando(false);
     }
   }
 
-  function formatarData(iso: string) {
-    return new Date(iso).toLocaleDateString("pt-BR", {
-      day: "2-digit", month: "long", year: "numeric",
-    });
-  }
-
-  async function registrarEEmitir() {
+  async function handleImprimir() {
     if (!oficio) return;
-    setGerando(true);
+    setEmitindo(true);
     try {
-      await fetch(`/api/oficios/${oficio.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "emitido" }),
-      });
-      
-      setGerando(false);
-      setTimeout(() => {
-        window.print();
-      }, 100);
+      if (oficio.status === "rascunho") {
+        await fetch(`/api/oficios/${oficio.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "emitido" }),
+        });
+        setOficio((prev) => (prev ? { ...prev, status: "emitido" } : prev));
+      }
+
+      const html = gerarHtmlImpressao(oficio);
+      const janela = window.open("", "_blank", "width=960,height=800");
+      if (!janela) {
+        alert("Permita pop-ups para este site e tente novamente.");
+        return;
+      }
+      janela.document.open();
+      janela.document.write(html);
+      janela.document.close();
+
+      // Aguarda imagem carregar antes de abrir diálogo de impressão
+      janela.onload = () => {
+        const img = janela.document.querySelector("img");
+        const imprimir = () => setTimeout(() => janela.print(), 400);
+        if (img && !img.complete) {
+          img.onload = imprimir;
+          img.onerror = imprimir;
+        } else {
+          imprimir();
+        }
+      };
     } catch {
       alert("Erro ao preparar impressão.");
-      setGerando(false);
+    } finally {
+      setEmitindo(false);
     }
   }
 
@@ -132,88 +266,140 @@ export default function PdfPage() {
   return (
     <>
       <style>{`
-        @media print {
-          @page { size: A4 portrait; margin: 40mm 20mm 25mm 20mm; }
-          .no-print { display: none !important; }
-          body, .min-h-screen, .flex { display: block !important; margin: 0; padding: 0; background: white; font-size: 12pt; }
-          .pagina-oficio { width: 100% !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; position: static !important; }
-          h1, h2, h3, h4, h5 { page-break-after: avoid; }
-          .oficio-corpo table, .oficio-corpo figure { page-break-inside: avoid; }
-          
-          /* Fixed elements mapped cleanly onto the native printed page margins */
-          .print-header-fixed { position: fixed !important; top: -35mm; left: 0; width: 100%; display: block !important; }
-          .print-footer-fixed { position: fixed !important; bottom: -20mm; left: 0; width: 100%; display: block !important; }
-          
-          /* Hide screen components in print */
-          .screen-header, .screen-footer { display: none !important; }
+        .pagina-preview {
+          width: 210mm;
+          min-height: 297mm;
+          background: #fff;
+          box-shadow: 0 4px 32px rgba(0,0,0,0.25);
+          position: relative;
+          box-sizing: border-box;
+          font-family: Arial, sans-serif;
+          font-size: 12pt;
+          line-height: 1.5;
+          color: #000;
+          display: flex;
+          flex-direction: column;
         }
-        @media screen {
-          .pagina-oficio { padding-top: 35mm; padding-bottom: 25mm; position: relative; }
-          .screen-footer { position: absolute; bottom: 25mm; left: 20mm; right: 20mm; }
-          .print-header-fixed, .print-footer-fixed { display: none !important; }
+        .preview-cabecalho {
+          border-bottom: 1px solid #ccc;
+          padding: 6mm 20mm 4mm 30mm;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 45mm;
         }
+        .preview-cabecalho img {
+          max-height: 35mm;
+          max-width: 100%;
+          object-fit: contain;
+        }
+        .preview-corpo {
+          flex: 1;
+          padding: 8mm 20mm 8mm 30mm;
+        }
+        .preview-rodape {
+          border-top: 1px solid #ccc;
+          padding: 3mm 20mm 6mm 30mm;
+          font-size: 8pt;
+          color: #555;
+          text-align: center;
+          min-height: 18mm;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .preview-corpo .corpo-preview p { margin: 0 0 8px 0; text-align: justify; }
+        .preview-corpo .corpo-preview table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 12px 0; }
+        .preview-corpo .corpo-preview td, .preview-corpo .corpo-preview th { border: 1px solid #000; padding: 4px 8px; }
       `}</style>
 
-      <div className="min-h-screen bg-gray-100">
-        <div className="no-print">
+      <div style={{ minHeight: "100vh", background: "#525659" }}>
+        {/* Barra de ações */}
+        <div style={{ background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.12)", position: "sticky", top: 0, zIndex: 100 }}>
           <Navbar />
-          <div className="max-w-5xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Visualização do Ofício</h1>
-                <p className="text-sm text-gray-500">{oficio.numero}</p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => router.back()} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">← Voltar</button>
-                <button onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">Editar</button>
-                <button onClick={() => window.print()} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 bg-white">Visualizar Impressão</button>
-                <button onClick={registrarEEmitir} disabled={gerando} className="px-5 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {gerando ? "Carregando..." : "Imprimir / Salvar PDF"}
-                </button>
-              </div>
+          <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <h1 style={{ fontSize: "16px", fontWeight: "700", fontFamily: "Georgia, serif", color: "#0D3B7A", margin: "0 0 2px" }}>
+                Visualização do Ofício
+              </h1>
+              <p style={{ fontSize: "12px", color: "#888", fontFamily: "Arial, sans-serif", margin: 0 }}>
+                {oficio.numero}
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => router.back()}
+                style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
+              >
+                ← Voltar
+              </button>
+              <button
+                onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)}
+                style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={handleImprimir}
+                disabled={emitindo}
+                style={{
+                  background: emitindo ? "#90A4AE" : "linear-gradient(135deg, #0D3B7A, #1565C0)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 20px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  cursor: emitindo ? "not-allowed" : "pointer",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                {emitindo ? "Preparando..." : "🖨 Imprimir / Salvar PDF"}
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center py-6">
-          <div className="pagina-oficio" style={{ ...estiloBase, boxShadow: "0 2px 16px rgba(0,0,0,0.12)" }}>
-            
-            {/* Screen Header */}
-            <div className="screen-header" style={{ paddingBottom: "16px" }}>
-              <Cabecalho />
+        {/* Preview A4 fiel ao documento */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "32px 16px 48px" }}>
+          <div className="pagina-preview">
+
+            <div className="preview-cabecalho">
+              <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" />
             </div>
 
-            {/* Print Header (Repeats on every page exactly in the top margin) */}
-            <div className="print-header-fixed">
-              <Cabecalho />
-            </div>
-
-            <div className="oficio-corpo">
-              <div style={{ fontWeight: "bold", marginBottom: "16px" }}>
-                OFÍCIO: {oficio.numero}
+            <div className="preview-corpo">
+              <div style={{ fontWeight: "bold", marginBottom: "12px" }}>
+                OFÍCIO Nº {oficio.numero}
               </div>
-
-              <div style={{ marginBottom: "16px", textAlign: "right" }}>
-                Rondonópolis, {formatarData(oficio.criadoEm)}
+              <div style={{ textAlign: "right", marginBottom: "18px" }}>
+                Rondonópolis, {formatarData(oficio.criadoEm)}.
               </div>
 
               {dest && (
-                <div style={{ marginBottom: "16px", lineHeight: "1.6" }}>
+                <div style={{ marginBottom: "18px", lineHeight: "1.7" }}>
                   {dest.responsavel && (
-                    <div><strong>Para:</strong> {dest.responsavel}{dest.cargo ? ` — ${dest.cargo}` : ""}</div>
+                    <>
+                      <div>Ao Senhor</div>
+                      <div><strong>{dest.responsavel}</strong></div>
+                      {dest.cargo && <div>{dest.cargo}</div>}
+                    </>
                   )}
-                  <div><strong>Órgão:</strong> {dest.nome}</div>
+                  <div><strong>{dest.nome}</strong></div>
                   {dest.endereco && (
-                    <div><strong>Endereço:</strong> {dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
+                    <div>{dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
                   )}
                 </div>
               )}
 
-              <div style={{ marginBottom: "24px" }}>
-                <strong>Assunto:</strong> {oficio.assunto}
-              </div>
+              {oficio.assunto && (
+                <div style={{ fontWeight: "bold", marginBottom: "20px" }}>
+                  Assunto: {oficio.assunto}.
+                </div>
+              )}
 
               <div
+                className="corpo-preview"
                 style={{ textAlign: "justify" }}
                 dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
               />
@@ -225,16 +411,9 @@ export default function PdfPage() {
               )}
             </div>
 
-            {/* Screen Footer */}
-            <div className="screen-footer">
-              <Rodape />
+            <div className="preview-rodape">
+              Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
             </div>
-
-            {/* Print Footer (Repeats on every page exactly in the bottom margin) */}
-            <div className="print-footer-fixed">
-              <Rodape />
-            </div>
-
           </div>
         </div>
       </div>
