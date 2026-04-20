@@ -44,8 +44,8 @@ function montarHtmlImpressao(params: {
 
   // Limpa marcadores do editor antes de imprimir
   const conteudoLimpo = conteudo
-    .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
-    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
+    .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>/gi, "")
+    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>/gi, "");
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -54,10 +54,15 @@ function montarHtmlImpressao(params: {
 <style>
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
 
-  @page { size: A4 portrait; margin: 0; }
+  @page {
+    size: A4 portrait;
+    margin-top: 47mm;
+    margin-bottom: 22mm;
+    margin-left: 30mm;
+    margin-right: 20mm;
+  }
 
   html, body {
-    width: 210mm;
     font-family: Arial, sans-serif;
     font-size: 12pt;
     line-height: 1.5;
@@ -65,34 +70,38 @@ function montarHtmlImpressao(params: {
     background: white;
   }
 
-  table.layout { width: 210mm; border-collapse: collapse; }
-
-  thead.cabecalho td {
-    padding: 8mm 20mm 4mm 30mm;
-    border-bottom: 1px solid #ccc;
-    text-align: center;
+  #cabecalho {
+    position: fixed;
+    top: -47mm;
+    left: -30mm;
+    right: -20mm;
     height: 45mm;
-    vertical-align: middle;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5mm 20mm 3mm 30mm;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
   }
-  thead.cabecalho img {
-    max-height: 35mm;
-    max-width: 150mm;
-    object-fit: contain;
-  }
-  tfoot.rodape td {
-    padding: 3mm 20mm 6mm 30mm;
-    border-top: 1px solid #ccc;
+  #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
+
+  #rodape {
+    position: fixed;
+    bottom: -22mm;
+    left: -30mm;
+    right: -20mm;
+    height: 20mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 8pt;
     color: #555;
-    text-align: center;
-    height: 18mm;
-    vertical-align: middle;
-  }
-  tbody td.corpo-celula {
-    padding: 8mm 20mm 8mm 30mm;
-    vertical-align: top;
+    border-top: 1px solid #ccc;
+    padding: 0 20mm 0 30mm;
+    background: #fff;
   }
 
+  #conteudo { width: 100%; }
   .numero-oficio { font-weight: bold; margin-bottom: 12px; }
   .data-oficio { text-align: right; margin-bottom: 18px; }
   .destinatario { margin-bottom: 18px; line-height: 1.7; }
@@ -100,32 +109,25 @@ function montarHtmlImpressao(params: {
   .corpo { text-align: justify; }
   .corpo p { margin: 0 0 8px 0; text-align: justify; }
   .corpo br { display: block; margin-bottom: 6px; }
-  /* Tabelas dentro do conteudo do oficio */
   .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
   .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
   .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
 </style>
 </head>
 <body>
-<table class="layout">
-  <thead class="cabecalho">
-    <tr><td><img src="${CABECALHO_URL}" crossorigin="anonymous" /></td></tr>
-  </thead>
-  <tfoot class="rodape">
-    <tr><td>Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000</td></tr>
-  </tfoot>
-  <tbody>
-    <tr>
-      <td class="corpo-celula">
-        <div class="numero-oficio">OFÍCIO Nº ${numero}</div>
-        <div class="data-oficio">Rondonópolis, ${dataHoje}.</div>
-        ${destinatarioHtml}
-        ${assuntoHtml}
-        <div class="corpo">${conteudoLimpo}</div>
-      </td>
-    </tr>
-  </tbody>
-</table>
+  <div id="cabecalho">
+    <img src="${CABECALHO_URL}" crossorigin="anonymous" />
+  </div>
+  <div id="rodape">
+    Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
+  </div>
+  <div id="conteudo">
+    <div class="numero-oficio">OFÍCIO Nº ${numero}</div>
+    <div class="data-oficio">Rondonópolis, ${dataHoje}.</div>
+    ${destinatarioHtml}
+    ${assuntoHtml}
+    <div class="corpo">${conteudoLimpo}</div>
+  </div>
 </body>
 </html>`;
 }

@@ -27,20 +27,15 @@ interface Oficio {
 const CABECALHO_URL =
   "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
 
-const RODAPE_TEXTO =
-  "Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000";
-
 function limparConteudo(html: string): string {
   return html
-    .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
-    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
+    .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>/gi, "")
+    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>/gi, "");
 }
 
 function formatarData(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
+    day: "2-digit", month: "long", year: "numeric",
   });
 }
 
@@ -48,139 +43,107 @@ function montarDestinatarioHtml(dest: Oficio["destinatario"]): string {
   if (!dest) return "";
   let html = "";
   if (dest.responsavel) {
-    html += `<div>Ao Senhor</div>`;
-    html += `<div><strong>${dest.responsavel}</strong></div>`;
+    html += `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>`;
     if (dest.cargo) html += `<div>${dest.cargo}</div>`;
   }
   html += `<div><strong>${dest.nome}</strong></div>`;
-  if (dest.endereco) {
+  if (dest.endereco)
     html += `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>`;
-  }
   return `<div class="destinatario">${html}</div>`;
 }
 
-// Gera o HTML completo para impressão usando <table> com thead/tfoot
-// para repetição automática de cabeçalho e rodapé em cada página
+const HTML_IMPRESSAO_STYLE = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: A4 portrait;
+    margin-top: 47mm;
+    margin-bottom: 22mm;
+    margin-left: 30mm;
+    margin-right: 20mm;
+  }
+
+  html, body {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #cabecalho {
+    position: fixed;
+    top: -47mm;
+    left: -30mm;
+    right: -20mm;
+    height: 45mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5mm 20mm 3mm 30mm;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+  }
+  #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
+
+  #rodape {
+    position: fixed;
+    bottom: -22mm;
+    left: -30mm;
+    right: -20mm;
+    height: 20mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding: 0 20mm 0 30mm;
+    background: #fff;
+  }
+
+  #conteudo { width: 100%; }
+  .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+  .data-oficio { text-align: right; margin-bottom: 18px; }
+  .destinatario { margin-bottom: 18px; line-height: 1.7; }
+  .assunto { font-weight: bold; margin-bottom: 20px; }
+  .corpo { text-align: justify; }
+  .corpo p { margin: 0 0 8px 0; text-align: justify; }
+  .corpo br { display: block; margin-bottom: 6px; }
+  .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+  .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+  .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+`;
+
 function gerarHtmlImpressao(oficio: Oficio): string {
-  const dest = oficio.destinatario;
   const conteudoLimpo = limparConteudo(oficio.conteudo);
   const dataOficio = formatarData(oficio.criadoEm);
-  const destinatarioHtml = montarDestinatarioHtml(dest);
+  const destinatarioHtml = montarDestinatarioHtml(oficio.destinatario);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <title>Ofício ${oficio.numero}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    @page {
-      size: A4 portrait;
-      margin: 0;
-    }
-
-    html, body {
-      width: 210mm;
-      font-family: Arial, sans-serif;
-      font-size: 12pt;
-      line-height: 1.5;
-      color: #000;
-      background: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    /*
-     * Técnica da table com thead/tfoot:
-     * thead se repete no topo de cada página impressa
-     * tfoot se repete no rodapé de cada página impressa
-     */
-    table.layout {
-      width: 210mm;
-      border-collapse: collapse;
-    }
-
-    /* Cabeçalho: repetido em cada página */
-    thead.cabecalho td {
-      padding: 8mm 20mm 4mm 30mm;
-      border-bottom: 1px solid #ccc;
-      text-align: center;
-      height: 45mm;
-      vertical-align: middle;
-    }
-    thead.cabecalho img {
-      max-height: 35mm;
-      max-width: 150mm;
-      object-fit: contain;
-    }
-
-    /* Rodapé: repetido em cada página */
-    tfoot.rodape td {
-      padding: 3mm 20mm 6mm 30mm;
-      border-top: 1px solid #ccc;
-      font-size: 8pt;
-      color: #555;
-      text-align: center;
-      height: 18mm;
-      vertical-align: middle;
-    }
-
-    /* Conteúdo do ofício */
-    tbody td.corpo-celula {
-      padding: 8mm 20mm 8mm 30mm;
-      vertical-align: top;
-    }
-
-    .numero-oficio { font-weight: bold; margin-bottom: 12px; }
-    .data-oficio { text-align: right; margin-bottom: 18px; }
-    .destinatario { margin-bottom: 18px; line-height: 1.7; }
-    .assunto { font-weight: bold; margin-bottom: 20px; }
-
-    .corpo { text-align: justify; }
-    .corpo p { margin: 0 0 8px 0; text-align: justify; }
-    .corpo br { display: block; margin-bottom: 6px; }
-    .corpo table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 12px 0;
-      font-size: 10pt;
-    }
-    .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
-    .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
-  </style>
+  <style>${HTML_IMPRESSAO_STYLE}</style>
 </head>
 <body>
-
-<table class="layout">
-  <thead class="cabecalho">
-    <tr>
-      <td>
-        <img src="${CABECALHO_URL}" crossorigin="anonymous" />
-      </td>
-    </tr>
-  </thead>
-
-  <tfoot class="rodape">
-    <tr>
-      <td>${RODAPE_TEXTO}</td>
-    </tr>
-  </tfoot>
-
-  <tbody>
-    <tr>
-      <td class="corpo-celula">
-        <div class="numero-oficio">OFÍCIO Nº ${oficio.numero}</div>
-        <div class="data-oficio">Rondonópolis, ${dataOficio}.</div>
-        ${destinatarioHtml}
-        ${oficio.assunto ? `<div class="assunto">Assunto: ${oficio.assunto}.</div>` : ""}
-        <div class="corpo">${conteudoLimpo}</div>
-        ${oficio.protocolo ? `<div style="margin-top:16px;font-size:10pt;color:#555;">Protocolo: ${oficio.protocolo}</div>` : ""}
-      </td>
-    </tr>
-  </tbody>
-</table>
-
+  <div id="cabecalho">
+    <img src="${CABECALHO_URL}" crossorigin="anonymous" />
+  </div>
+  <div id="rodape">
+    Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
+  </div>
+  <div id="conteudo">
+    <div class="numero-oficio">OFÍCIO Nº ${oficio.numero}</div>
+    <div class="data-oficio">Rondonópolis, ${dataOficio}.</div>
+    ${destinatarioHtml}
+    ${oficio.assunto ? `<div class="assunto">Assunto: ${oficio.assunto}.</div>` : ""}
+    <div class="corpo">${conteudoLimpo}</div>
+    ${oficio.protocolo ? `<div style="margin-top:16px;font-size:10pt;color:#555;">Protocolo: ${oficio.protocolo}</div>` : ""}
+  </div>
 </body>
 </html>`;
 }
@@ -206,10 +169,7 @@ export default function PdfPage() {
   async function carregarOficio() {
     try {
       const res = await fetch(`/api/oficios/${id}`);
-      if (!res.ok) {
-        router.push("/oficios/historico");
-        return;
-      }
+      if (!res.ok) { router.push("/oficios/historico"); return; }
       setOficio(await res.json());
     } finally {
       setCarregando(false);
@@ -226,29 +186,19 @@ export default function PdfPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "emitido" }),
         });
-        setOficio((prev) => (prev ? { ...prev, status: "emitido" } : prev));
+        setOficio((prev: any) => prev ? { ...prev, status: "emitido" } : prev);
       }
-
       const html = gerarHtmlImpressao(oficio);
       const janela = window.open("", "_blank", "width=960,height=800");
-      if (!janela) {
-        alert("Permita pop-ups para este site e tente novamente.");
-        return;
-      }
+      if (!janela) { alert("Permita pop-ups para este site e tente novamente."); return; }
       janela.document.open();
       janela.document.write(html);
       janela.document.close();
-
-      // Aguarda imagem carregar antes de abrir diálogo de impressão
       janela.onload = () => {
         const img = janela.document.querySelector("img");
         const imprimir = () => setTimeout(() => janela.print(), 400);
-        if (img && !img.complete) {
-          img.onload = imprimir;
-          img.onerror = imprimir;
-        } else {
-          imprimir();
-        }
+        if (img && !img.complete) { img.onload = imprimir; img.onerror = imprimir; }
+        else imprimir();
       };
     } catch {
       alert("Erro ao preparar impressão.");
@@ -271,146 +221,82 @@ export default function PdfPage() {
           min-height: 297mm;
           background: #fff;
           box-shadow: 0 4px 32px rgba(0,0,0,0.25);
-          position: relative;
+          display: flex;
+          flex-direction: column;
           box-sizing: border-box;
           font-family: Arial, sans-serif;
           font-size: 12pt;
           line-height: 1.5;
           color: #000;
-          display: flex;
-          flex-direction: column;
         }
         .preview-cabecalho {
           border-bottom: 1px solid #ccc;
-          padding: 6mm 20mm 4mm 30mm;
+          padding: 5mm 20mm 3mm 30mm;
           display: flex;
           align-items: center;
           justify-content: center;
           min-height: 45mm;
+          flex-shrink: 0;
         }
-        .preview-cabecalho img {
-          max-height: 35mm;
-          max-width: 100%;
-          object-fit: contain;
-        }
+        .preview-cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
         .preview-corpo {
           flex: 1;
           padding: 8mm 20mm 8mm 30mm;
         }
         .preview-rodape {
           border-top: 1px solid #ccc;
-          padding: 3mm 20mm 6mm 30mm;
+          padding: 3mm 20mm;
           font-size: 8pt;
           color: #555;
           text-align: center;
-          min-height: 18mm;
+          min-height: 20mm;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
         }
-        .preview-corpo .corpo-preview p { margin: 0 0 8px 0; text-align: justify; }
-        .preview-corpo .corpo-preview table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 12px 0; }
-        .preview-corpo .corpo-preview td, .preview-corpo .corpo-preview th { border: 1px solid #000; padding: 4px 8px; }
+        .corpo-preview p { margin: 0 0 8px 0; text-align: justify; }
+        .corpo-preview table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 12px 0; }
+        .corpo-preview td, .corpo-preview th { border: 1px solid #000; padding: 4px 8px; }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#525659" }}>
-        {/* Barra de ações */}
         <div style={{ background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.12)", position: "sticky", top: 0, zIndex: 100 }}>
           <Navbar />
           <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <h1 style={{ fontSize: "16px", fontWeight: "700", fontFamily: "Georgia, serif", color: "#0D3B7A", margin: "0 0 2px" }}>
-                Visualização do Ofício
-              </h1>
-              <p style={{ fontSize: "12px", color: "#888", fontFamily: "Arial, sans-serif", margin: 0 }}>
-                {oficio.numero}
-              </p>
+              <h1 style={{ fontSize: "16px", fontWeight: "700", fontFamily: "Georgia, serif", color: "#0D3B7A", margin: "0 0 2px" }}>Visualização do Ofício</h1>
+              <p style={{ fontSize: "12px", color: "#888", fontFamily: "Arial, sans-serif", margin: 0 }}>{oficio.numero}</p>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                onClick={() => router.back()}
-                style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
-              >
-                ← Voltar
-              </button>
-              <button
-                onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)}
-                style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}
-              >
-                Editar
-              </button>
-              <button
-                onClick={handleImprimir}
-                disabled={emitindo}
-                style={{
-                  background: emitindo ? "#90A4AE" : "linear-gradient(135deg, #0D3B7A, #1565C0)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "8px 20px",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  cursor: emitindo ? "not-allowed" : "pointer",
-                  fontFamily: "Arial, sans-serif",
-                }}
-              >
+              <button onClick={() => router.back()} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>← Voltar</button>
+              <button onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Editar</button>
+              <button onClick={handleImprimir} disabled={emitindo} style={{ background: emitindo ? "#90A4AE" : "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 20px", fontSize: "13px", fontWeight: "700", cursor: emitindo ? "not-allowed" : "pointer", fontFamily: "Arial, sans-serif" }}>
                 {emitindo ? "Preparando..." : "🖨 Imprimir / Salvar PDF"}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Preview A4 fiel ao documento */}
         <div style={{ display: "flex", justifyContent: "center", padding: "32px 16px 48px" }}>
           <div className="pagina-preview">
-
             <div className="preview-cabecalho">
               <img src={CABECALHO_URL} alt="Cabeçalho" crossOrigin="anonymous" />
             </div>
-
             <div className="preview-corpo">
-              <div style={{ fontWeight: "bold", marginBottom: "12px" }}>
-                OFÍCIO Nº {oficio.numero}
-              </div>
-              <div style={{ textAlign: "right", marginBottom: "18px" }}>
-                Rondonópolis, {formatarData(oficio.criadoEm)}.
-              </div>
-
+              <div style={{ fontWeight: "bold", marginBottom: "12px" }}>OFÍCIO Nº {oficio.numero}</div>
+              <div style={{ textAlign: "right", marginBottom: "18px" }}>Rondonópolis, {formatarData(oficio.criadoEm)}.</div>
               {dest && (
                 <div style={{ marginBottom: "18px", lineHeight: "1.7" }}>
-                  {dest.responsavel && (
-                    <>
-                      <div>Ao Senhor</div>
-                      <div><strong>{dest.responsavel}</strong></div>
-                      {dest.cargo && <div>{dest.cargo}</div>}
-                    </>
-                  )}
+                  {dest.responsavel && (<><div>Ao Senhor</div><div><strong>{dest.responsavel}</strong></div>{dest.cargo && <div>{dest.cargo}</div>}</>)}
                   <div><strong>{dest.nome}</strong></div>
-                  {dest.endereco && (
-                    <div>{dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>
-                  )}
+                  {dest.endereco && <div>{dest.endereco}{dest.cidade ? `, ${dest.cidade}` : ""}</div>}
                 </div>
               )}
-
-              {oficio.assunto && (
-                <div style={{ fontWeight: "bold", marginBottom: "20px" }}>
-                  Assunto: {oficio.assunto}.
-                </div>
-              )}
-
-              <div
-                className="corpo-preview"
-                style={{ textAlign: "justify" }}
-                dangerouslySetInnerHTML={{ __html: conteudoLimpo }}
-              />
-
-              {oficio.protocolo && (
-                <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>
-                  Protocolo: {oficio.protocolo}
-                </div>
-              )}
+              {oficio.assunto && <div style={{ fontWeight: "bold", marginBottom: "20px" }}>Assunto: {oficio.assunto}.</div>}
+              <div className="corpo-preview" style={{ textAlign: "justify" }} dangerouslySetInnerHTML={{ __html: conteudoLimpo }} />
+              {oficio.protocolo && <div style={{ marginTop: "16px", fontSize: "10pt", color: "#555" }}>Protocolo: {oficio.protocolo}</div>}
             </div>
-
             <div className="preview-rodape">
               Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
             </div>

@@ -173,10 +173,23 @@ export default function NovoOficioPage() {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    @page { size: A4 portrait; margin: 0; }
+    /*
+     * Estratégia:
+     * - @page define margens reais: topo=47mm (cabeçalho), base=22mm (rodapé), lados normais
+     * - #cabecalho: position:fixed, top negativo para entrar na margem superior
+     * - #rodape: position:fixed, bottom negativo para entrar na margem inferior
+     * - body: sem padding adicional (as margens do @page já criam o espaço)
+     * Isso garante cabeçalho e rodapé em TODAS as páginas, sempre no lugar certo.
+     */
+    @page {
+      size: A4 portrait;
+      margin-top: 47mm;
+      margin-bottom: 22mm;
+      margin-left: 30mm;
+      margin-right: 20mm;
+    }
 
     html, body {
-      width: 210mm;
       font-family: Arial, sans-serif;
       font-size: 12pt;
       line-height: 1.5;
@@ -186,36 +199,45 @@ export default function NovoOficioPage() {
       print-color-adjust: exact;
     }
 
-    /* Tabela de layout: thead e tfoot repetem em cada página */
-    table.layout {
-      width: 210mm;
-      border-collapse: collapse;
-    }
-    thead.cabecalho td {
-      padding: 8mm 20mm 4mm 30mm;
-      border-bottom: 1px solid #ccc;
-      text-align: center;
+    /* Cabeçalho fixo — repete em cada página dentro da margem superior */
+    #cabecalho {
+      position: fixed;
+      top: -47mm;
+      left: -30mm;
+      right: -20mm;
       height: 45mm;
-      vertical-align: middle;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5mm 20mm 3mm 30mm;
+      border-bottom: 1px solid #ccc;
+      background: #fff;
     }
-    thead.cabecalho img {
+    #cabecalho img {
       max-height: 35mm;
-      max-width: 150mm;
+      max-width: 100%;
       object-fit: contain;
     }
-    tfoot.rodape td {
-      padding: 3mm 20mm 6mm 30mm;
-      border-top: 1px solid #ccc;
+
+    /* Rodapé fixo — repete em cada página dentro da margem inferior */
+    #rodape {
+      position: fixed;
+      bottom: -22mm;
+      left: -30mm;
+      right: -20mm;
+      height: 20mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 8pt;
       color: #555;
-      text-align: center;
-      height: 18mm;
-      vertical-align: middle;
+      border-top: 1px solid #ccc;
+      padding: 0 20mm 0 30mm;
+      background: #fff;
     }
-    tbody td.corpo-celula {
-      padding: 8mm 20mm 8mm 30mm;
-      vertical-align: top;
-    }
+
+    /* Conteúdo */
+    #conteudo { width: 100%; }
 
     .numero-oficio { font-weight: bold; margin-bottom: 12px; }
     .data-oficio { text-align: right; margin-bottom: 18px; }
@@ -230,25 +252,23 @@ export default function NovoOficioPage() {
   </style>
 </head>
 <body>
-<table class="layout">
-  <thead class="cabecalho">
-    <tr><td><img src="${cabecalhoUrl}" crossorigin="anonymous" /></td></tr>
-  </thead>
-  <tfoot class="rodape">
-    <tr><td>Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000</td></tr>
-  </tfoot>
-  <tbody>
-    <tr>
-      <td class="corpo-celula">
-        <div class="numero-oficio">OFÍCIO Nº ${numeroExibir}</div>
-        <div class="data-oficio">Rondonópolis, ${dataAtual}.</div>
-        ${destinatarioHtml ? `<div class="destinatario">${destinatarioHtml}</div>` : ""}
-        ${assunto ? `<div class="assunto">Assunto: ${assunto}.</div>` : ""}
-        <div class="corpo">${conteudoLimpo}</div>
-      </td>
-    </tr>
-  </tbody>
-</table>
+
+  <div id="cabecalho">
+    <img src="${cabecalhoUrl}" crossorigin="anonymous" />
+  </div>
+
+  <div id="rodape">
+    Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
+  </div>
+
+  <div id="conteudo">
+    <div class="numero-oficio">OFÍCIO Nº ${numeroExibir}</div>
+    <div class="data-oficio">Rondonópolis, ${dataAtual}.</div>
+    ${destinatarioHtml ? `<div class="destinatario">${destinatarioHtml}</div>` : ""}
+    ${assunto ? `<div class="assunto">Assunto: ${assunto}.</div>` : ""}
+    <div class="corpo">${conteudoLimpo}</div>
+  </div>
+
 </body>
 </html>`;
 
@@ -420,14 +440,24 @@ export default function NovoOficioPage() {
                       margin: 0;
                       padding: 0;
                     }
+                    /*
+                     * Dimensões calibradas para coincidir com a impressão real:
+                     * A4 = 794px (210mm a 96dpi)
+                     * Cabeçalho impressão ≈ 47mm = 177px  → padding-top do editor
+                     * Rodapé impressão ≈ 26mm = 99px       → padding-bottom do editor
+                     * Largura útil: 210mm - 30mm(esq) - 20mm(dir) = 160mm = 605px
+                     * Página total: 1123px (297mm a 96dpi)
+                     * Marcador de página a cada 1123px
+                     */
                     .page {
                       background: white;
-                      width: 754px;
-                      min-height: 1063px;
+                      width: 605px;
+                      min-height: 1123px;
                       margin: 20px auto;
-                      padding: 60px 60px 80px 80px;
+                      padding: 177px 0 99px 0;
                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                       box-sizing: border-box;
+                      position: relative;
                     }
                     p { margin: 0 0 8px 0; text-align: justify; }
                     table { border-collapse: collapse; width: 100%; font-size: 11pt; }
@@ -456,25 +486,45 @@ export default function NovoOficioPage() {
                     editor.on("init", () => {
                       const doc = editor.getDoc();
                       const body = doc.body;
-                      const alturaUtil = 973;
+                      /*
+                       * alturaUtil = altura de 1 página A4 a 96dpi = 297mm * 96/25.4 = 1123px
+                       * O body do editor (.page) tem padding-top=177px e padding-bottom=99px
+                       * que espelham o cabeçalho e rodapé da impressão real.
+                       * Assim o marcador de quebra de página coincide com a quebra real.
+                       */
+                      const ALTURA_PAGINA = 1123;
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
                         const bodyHeight = body.scrollHeight;
                         let pagina = 1;
-                        while (pagina * alturaUtil < bodyHeight) {
+                        while (pagina * ALTURA_PAGINA < bodyHeight) {
                           const marker = doc.createElement("div");
                           marker.className = "page-marker";
                           marker.setAttribute("contenteditable", "false");
-                          marker.style.cssText = "position:absolute;left:-80px;right:-60px;top:" + (pagina * alturaUtil) + "px;height:20px;background:#b0b0b0;border-top:2px solid #e53935;border-bottom:2px solid #e53935;display:flex;align-items:center;justify-content:center;font-size:9px;color:#333;letter-spacing:1px;pointer-events:none;z-index:9999;font-family:Arial,sans-serif;";
-                          marker.innerHTML = "── Página " + (pagina + 1) + " ──";
+                          marker.style.cssText =
+                            "position:absolute;" +
+                            "left:-40px;right:-40px;" +
+                            "top:" + (pagina * ALTURA_PAGINA) + "px;" +
+                            "height:2px;" +
+                            "background:#e53935;" +
+                            "pointer-events:none;" +
+                            "z-index:9999;";
+                          // Rótulo flutuante
+                          const label = doc.createElement("span");
+                          label.style.cssText =
+                            "position:absolute;top:-10px;left:50%;transform:translateX(-50%);" +
+                            "background:#e53935;color:#fff;font-size:9px;padding:1px 8px;" +
+                            "border-radius:3px;white-space:nowrap;font-family:Arial,sans-serif;letter-spacing:0.5px;";
+                          label.textContent = "── Página " + (pagina + 1) + " ──";
+                          marker.appendChild(label);
                           body.style.position = "relative";
                           body.appendChild(marker);
                           pagina++;
                         }
                       }
 
-                      editor.on("input keyup", atualizarMarcadores);
+                      editor.on("input keyup Change", atualizarMarcadores);
                       editor.on("SetContent", atualizarMarcadores);
                       setTimeout(atualizarMarcadores, 800);
                     });
