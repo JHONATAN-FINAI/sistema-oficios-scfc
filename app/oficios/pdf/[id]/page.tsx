@@ -55,30 +55,26 @@ function montarDestinatarioHtml(dest: Oficio["destinatario"]): string {
 const HTML_IMPRESSAO_STYLE = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  @page {
-    size: A4 portrait;
-    margin-top: 47mm;
-    margin-bottom: 22mm;
-    margin-left: 30mm;
-    margin-right: 20mm;
+  @page { size: A4 portrait; margin: 0; }
+
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  html, body {
+  body {
     font-family: Arial, sans-serif;
     font-size: 12pt;
     line-height: 1.5;
     color: #000;
     background: #fff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    padding: 47mm 20mm 22mm 30mm;
   }
 
   #cabecalho {
     position: fixed;
-    top: -47mm;
-    left: -30mm;
-    right: -20mm;
-    height: 45mm;
+    top: 0; left: 0; right: 0;
+    height: 47mm;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,10 +86,8 @@ const HTML_IMPRESSAO_STYLE = `
 
   #rodape {
     position: fixed;
-    bottom: -22mm;
-    left: -30mm;
-    right: -20mm;
-    height: 20mm;
+    bottom: 0; left: 0; right: 0;
+    height: 22mm;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -104,7 +98,145 @@ const HTML_IMPRESSAO_STYLE = `
     background: #fff;
   }
 
-  #conteudo { width: 100%; }
+  .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+  .data-oficio { text-align: right; margin-bottom: 18px; }
+  .destinatario { margin-bottom: 18px; line-height: 1.7; }
+  .assunto { font-weight: bold; margin-bottom: 20px; }
+  .corpo { text-align: justify; }
+  .corpo p { margin: 0 0 8px 0; text-align: justify; }
+  .corpo br { display: block; margin-bottom: 6px; }
+  .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+  .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+  .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+`;
+
+function gerarHtmlImpressao(oficio: Oficio): string {
+  const conteudoLimpo = limparConteudo(oficio.conteudo);
+  const dataOficio = formatarData(oficio.criadoEm);
+  const destinatarioHtml = montarDestinatarioHtml(oficio.destinatario);
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ofício ${oficio.numero}</title>
+  <style>${HTML_IMPRESSAO_STYLE}</style>
+</head>
+<body>
+  <div id="cabecalho">
+    <img src="${CABECALHO_URL}" crossorigin="anonymous" />
+  </div>
+  <div id="rodape">
+    Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
+  </div>
+  <div class="numero-oficio">OFÍCIO Nº ${oficio.numero}</div>
+  <div class="data-oficio">Rondonópolis, ${dataOficio}.</div>
+  ${destinatarioHtml}
+  ${oficio.assunto ? `<div class="assunto">Assunto: ${oficio.assunto}.</div>` : ""}
+  <div class="corpo">${conteudoLimpo}</div>
+  ${oficio.protocolo ? `<div style="margin-top:16px;font-size:10pt;color:#555;">Protocolo: ${oficio.protocolo}</div>` : ""}
+</body>
+</html>`
+}nt";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter, useParams } from "next/navigation";
+import Navbar from "@/components/Navbar";
+
+interface Oficio {
+  id: number;
+  numero: string;
+  ano: number;
+  assunto: string;
+  conteudo: string;
+  status: string;
+  protocolo: string | null;
+  criadoEm: string;
+  destinatario: {
+    codigo: string;
+    nome: string;
+    endereco: string | null;
+    cidade: string | null;
+    responsavel: string | null;
+    cargo: string | null;
+  } | null;
+}
+
+const CABECALHO_URL =
+  "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
+
+function limparConteudo(html: string): string {
+  return html
+    .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>/gi, "")
+    .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>/gi, "");
+}
+
+function formatarData(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit", month: "long", year: "numeric",
+  });
+}
+
+function montarDestinatarioHtml(dest: Oficio["destinatario"]): string {
+  if (!dest) return "";
+  let html = "";
+  if (dest.responsavel) {
+    html += `<div>Ao Senhor</div><div><strong>${dest.responsavel}</strong></div>`;
+    if (dest.cargo) html += `<div>${dest.cargo}</div>`;
+  }
+  html += `<div><strong>${dest.nome}</strong></div>`;
+  if (dest.endereco)
+    html += `<div>${dest.endereco}${dest.cidade ? `, ${dest.cidade}` : ""}</div>`;
+  return `<div class="destinatario">${html}</div>`;
+}
+
+const HTML_IMPRESSAO_STYLE = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page { size: A4 portrait; margin: 0; }
+
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+    padding: 47mm 20mm 22mm 30mm;
+  }
+
+  #cabecalho {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 47mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5mm 20mm 3mm 30mm;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+  }
+  #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
+
+  #rodape {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 22mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding: 0 20mm 0 30mm;
+    background: #fff;
+  }
+
   .numero-oficio { font-weight: bold; margin-bottom: 12px; }
   .data-oficio { text-align: right; margin-bottom: 18px; }
   .destinatario { margin-bottom: 18px; line-height: 1.7; }

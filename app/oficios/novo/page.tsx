@@ -174,38 +174,37 @@ export default function NovoOficioPage() {
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     /*
-     * Estratégia:
-     * - @page define margens reais: topo=47mm (cabeçalho), base=22mm (rodapé), lados normais
-     * - #cabecalho: position:fixed, top negativo para entrar na margem superior
-     * - #rodape: position:fixed, bottom negativo para entrar na margem inferior
-     * - body: sem padding adicional (as margens do @page já criam o espaço)
-     * Isso garante cabeçalho e rodapé em TODAS as páginas, sempre no lugar certo.
+     * SOLUÇÃO CHROME: @page margin:0 + body padding + position:fixed top:0/bottom:0
+     * 
+     * Com @page margin:0, a página física vai de (0,0) até (210mm,297mm).
+     * position:fixed com top:0 ancora no topo físico da página → aparece em todas as páginas.
+     * position:fixed com bottom:0 ancora no rodapé físico → aparece em todas as páginas.
+     * body padding reserva o espaço para o conteúdo não ficar sob cabeçalho/rodapé.
      */
-    @page {
-      size: A4 portrait;
-      margin-top: 47mm;
-      margin-bottom: 22mm;
-      margin-left: 30mm;
-      margin-right: 20mm;
+    @page { size: A4 portrait; margin: 0; }
+
+    html {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
-    html, body {
+    body {
       font-family: Arial, sans-serif;
       font-size: 12pt;
       line-height: 1.5;
       color: #000;
       background: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      /* padding reserva espaço: topo=cabeçalho(47mm), baixo=rodapé(22mm), lados */
+      padding: 47mm 20mm 22mm 30mm;
     }
 
-    /* Cabeçalho fixo — repete em cada página dentro da margem superior */
+    /* Cabeçalho — fixo no TOPO físico de cada página */
     #cabecalho {
       position: fixed;
-      top: -47mm;
-      left: -30mm;
-      right: -20mm;
-      height: 45mm;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 47mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -213,19 +212,15 @@ export default function NovoOficioPage() {
       border-bottom: 1px solid #ccc;
       background: #fff;
     }
-    #cabecalho img {
-      max-height: 35mm;
-      max-width: 100%;
-      object-fit: contain;
-    }
+    #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
 
-    /* Rodapé fixo — repete em cada página dentro da margem inferior */
+    /* Rodapé — fixo no FUNDO físico de cada página */
     #rodape {
       position: fixed;
-      bottom: -22mm;
-      left: -30mm;
-      right: -20mm;
-      height: 20mm;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 22mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -235,9 +230,6 @@ export default function NovoOficioPage() {
       padding: 0 20mm 0 30mm;
       background: #fff;
     }
-
-    /* Conteúdo */
-    #conteudo { width: 100%; }
 
     .numero-oficio { font-weight: bold; margin-bottom: 12px; }
     .data-oficio { text-align: right; margin-bottom: 18px; }
@@ -261,13 +253,11 @@ export default function NovoOficioPage() {
     Prefeitura Municipal de Rondonópolis – MT &nbsp;|&nbsp; Av. Duque de Caxias, 1000 &nbsp;|&nbsp; CEP: 78.800-000 &nbsp;|&nbsp; (66) 3411-7000
   </div>
 
-  <div id="conteudo">
-    <div class="numero-oficio">OFÍCIO Nº ${numeroExibir}</div>
-    <div class="data-oficio">Rondonópolis, ${dataAtual}.</div>
-    ${destinatarioHtml ? `<div class="destinatario">${destinatarioHtml}</div>` : ""}
-    ${assunto ? `<div class="assunto">Assunto: ${assunto}.</div>` : ""}
-    <div class="corpo">${conteudoLimpo}</div>
-  </div>
+  <div class="numero-oficio">OFÍCIO Nº ${numeroExibir}</div>
+  <div class="data-oficio">Rondonópolis, ${dataAtual}.</div>
+  ${destinatarioHtml ? `<div class="destinatario">${destinatarioHtml}</div>` : ""}
+  ${assunto ? `<div class="assunto">Assunto: ${assunto}.</div>` : ""}
+  <div class="corpo">${conteudoLimpo}</div>
 
 </body>
 </html>`;
