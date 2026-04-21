@@ -195,7 +195,7 @@ export default function NovoOficioPage() {
       color: #000;
       background: #fff;
       /* padding reserva espaço: topo=cabeçalho(47mm), baixo=rodapé(22mm), lados */
-      padding: 47mm 20mm 22mm 30mm;
+      padding: 47mm 20mm 28mm 30mm;
     }
 
     /* Cabeçalho — fixo no TOPO físico de cada página */
@@ -220,7 +220,7 @@ export default function NovoOficioPage() {
       bottom: 0;
       left: 0;
       right: 0;
-      height: 22mm;
+      height: 28mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -431,20 +431,19 @@ export default function NovoOficioPage() {
                       padding: 0;
                     }
                     /*
-                     * Dimensões calibradas para coincidir com a impressão real:
-                     * A4 = 794px (210mm a 96dpi)
-                     * Cabeçalho impressão ≈ 47mm = 177px  → padding-top do editor
-                     * Rodapé impressão ≈ 26mm = 99px       → padding-bottom do editor
-                     * Largura útil: 210mm - 30mm(esq) - 20mm(dir) = 160mm = 605px
-                     * Página total: 1123px (297mm a 96dpi)
-                     * Marcador de página a cada 1123px
+                     * Dimensões calibradas com a impressão real (@page margin:0, body padding):
+                     * Cabeçalho: 47mm = 178px  → padding-top
+                     * Rodapé: 22mm + 6mm segurança = 28mm = 106px → padding-bottom
+                     * Largura útil: 210mm - 30mm - 20mm = 160mm = 605px
+                     * Área de conteúdo por página: 297mm - 47mm - 28mm = 222mm = 839px
+                     * Marcador N posicionado em: 178 + N*839 px do topo do body
                      */
                     .page {
                       background: white;
                       width: 605px;
                       min-height: 1123px;
                       margin: 20px auto;
-                      padding: 177px 0 99px 0;
+                      padding: 178px 0 106px 0;
                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                       box-sizing: border-box;
                       position: relative;
@@ -477,30 +476,36 @@ export default function NovoOficioPage() {
                       const doc = editor.getDoc();
                       const body = doc.body;
                       /*
-                       * alturaUtil = altura de 1 página A4 a 96dpi = 297mm * 96/25.4 = 1123px
-                       * O body do editor (.page) tem padding-top=177px e padding-bottom=99px
-                       * que espelham o cabeçalho e rodapé da impressão real.
-                       * Assim o marcador de quebra de página coincide com a quebra real.
+                       * Posição do marcador N (N=1,2,3...):
+                       *   top = PADDING_TOP + N * AREA_CONTEUDO
+                       *
+                       * PADDING_TOP = 178px (47mm — espelho do cabeçalho de impressão)
+                       * AREA_CONTEUDO = 839px (222mm — área útil por página na impressão)
+                       *   = 297mm - 47mm(cab) - 28mm(rod+segurança) = 222mm = 839px a 96dpi
+                       *
+                       * Isso garante que o marcador visual no editor caia exatamente
+                       * onde o Chrome quebra a página na impressão.
                        */
-                      const ALTURA_PAGINA = 1123;
+                      const PADDING_TOP = 178;
+                      const AREA_CONTEUDO = 839;
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
                         const bodyHeight = body.scrollHeight;
                         let pagina = 1;
-                        while (pagina * ALTURA_PAGINA < bodyHeight) {
+                        while (PADDING_TOP + pagina * AREA_CONTEUDO < bodyHeight) {
+                          const posTop = PADDING_TOP + pagina * AREA_CONTEUDO;
                           const marker = doc.createElement("div");
                           marker.className = "page-marker";
                           marker.setAttribute("contenteditable", "false");
                           marker.style.cssText =
                             "position:absolute;" +
                             "left:-40px;right:-40px;" +
-                            "top:" + (pagina * ALTURA_PAGINA) + "px;" +
+                            "top:" + posTop + "px;" +
                             "height:2px;" +
                             "background:#e53935;" +
                             "pointer-events:none;" +
                             "z-index:9999;";
-                          // Rótulo flutuante
                           const label = doc.createElement("span");
                           label.style.cssText =
                             "position:absolute;top:-10px;left:50%;transform:translateX(-50%);" +

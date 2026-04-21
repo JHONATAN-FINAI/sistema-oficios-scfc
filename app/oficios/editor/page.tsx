@@ -67,7 +67,7 @@ function montarHtmlImpressao(params: {
     line-height: 1.5;
     color: #000;
     background: #fff;
-    padding: 47mm 20mm 22mm 30mm;
+    padding: 47mm 20mm 28mm 30mm;
   }
 
   #cabecalho {
@@ -86,7 +86,7 @@ function montarHtmlImpressao(params: {
   #rodape {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    height: 22mm;
+    height: 28mm;
     display: flex;
     align-items: center;
     justify-content: center;
