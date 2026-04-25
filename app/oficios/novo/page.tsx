@@ -37,6 +37,7 @@ export default function NovoOficioPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("editar");
+  const conteudoParaEditor = useRef<string>("");
   const editorRef = useRef<any>(null);
 
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -98,6 +99,11 @@ export default function NovoOficioPage() {
     setReduzido(oficio.reduzido || "");
     setValorEstimado(oficio.valorEstimado || "");
     setConteudo(oficio.conteudo);
+    conteudoParaEditor.current = oficio.conteudo;
+    // Se o editor já estiver montado, injeta imediatamente
+    if (editorRef.current) {
+      editorRef.current.setContent(oficio.conteudo);
+    }
     if (oficio.classificacao) setClassificacao(oficio.classificacao);
     const template = templates.find((t) => t.id === oficio.templateId);
     if (template) setUsaClassificacao(template.usaClassificacao);
@@ -195,7 +201,7 @@ export default function NovoOficioPage() {
       color: #000;
       background: #fff;
       /* padding reserva espaço: topo=cabeçalho(47mm), baixo=rodapé(22mm), lados */
-      padding: 47mm 20mm 28mm 30mm;
+      padding: 47mm 20mm 35mm 30mm;
     }
 
     /* Cabeçalho — fixo no TOPO físico de cada página */
@@ -209,7 +215,7 @@ export default function NovoOficioPage() {
       align-items: center;
       justify-content: center;
       padding: 5mm 20mm 3mm 30mm;
-      border-bottom: 1px solid #ccc;
+      
       background: #fff;
     }
     #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
@@ -226,7 +232,7 @@ export default function NovoOficioPage() {
       justify-content: center;
       font-size: 8pt;
       color: #555;
-      border-top: 1px solid #ccc;
+      
       padding: 0 20mm 0 30mm;
       background: #fff;
     }
@@ -387,7 +393,11 @@ export default function NovoOficioPage() {
                 apiKey="vxdv4ca9oja0c9v2x277325dmvcju291qzd80ewa9l1j32xe"
                 onInit={(evt, editor) => {
                   editorRef.current = editor;
-                  if (conteudo) editor.setContent(conteudo);
+                  // Usa o ref que sempre tem o valor mais atual (evita race condition)
+                  const c = conteudoParaEditor.current || conteudo;
+                  if (c && c !== "<p>Inicie digitando o conteúdo do ofício...</p>") {
+                    editor.setContent(c);
+                  }
                 }}
                 initialValue="<p>Inicie digitando o conteúdo do ofício...</p>"
                 init={{
@@ -430,20 +440,12 @@ export default function NovoOficioPage() {
                       margin: 0;
                       padding: 0;
                     }
-                    /*
-                     * Dimensões calibradas com a impressão real (@page margin:0, body padding):
-                     * Cabeçalho: 47mm = 178px  → padding-top
-                     * Rodapé: 22mm + 6mm segurança = 28mm = 106px → padding-bottom
-                     * Largura útil: 210mm - 30mm - 20mm = 160mm = 605px
-                     * Área de conteúdo por página: 297mm - 47mm - 28mm = 222mm = 839px
-                     * Marcador N posicionado em: 178 + N*839 px do topo do body
-                     */
                     .page {
                       background: white;
                       width: 605px;
                       min-height: 1123px;
                       margin: 20px auto;
-                      padding: 178px 0 106px 0;
+                      padding: 178px 0 132px 0;
                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                       box-sizing: border-box;
                       position: relative;
@@ -487,7 +489,7 @@ export default function NovoOficioPage() {
                        * onde o Chrome quebra a página na impressão.
                        */
                       const PADDING_TOP = 178;
-                      const AREA_CONTEUDO = 839;
+                      const AREA_CONTEUDO = 813;
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());

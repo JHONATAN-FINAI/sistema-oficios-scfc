@@ -67,7 +67,7 @@ function montarHtmlImpressao(params: {
     line-height: 1.5;
     color: #000;
     background: #fff;
-    padding: 47mm 20mm 28mm 30mm;
+    padding: 47mm 20mm 35mm 30mm;
   }
 
   #cabecalho {
@@ -78,7 +78,7 @@ function montarHtmlImpressao(params: {
     align-items: center;
     justify-content: center;
     padding: 5mm 20mm 3mm 30mm;
-    border-bottom: 1px solid #ccc;
+    
     background: #fff;
   }
   #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
@@ -92,7 +92,7 @@ function montarHtmlImpressao(params: {
     justify-content: center;
     font-size: 8pt;
     color: #555;
-    border-top: 1px solid #ccc;
+    
     padding: 0 20mm 0 30mm;
     background: #fff;
   }

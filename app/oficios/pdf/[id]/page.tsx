@@ -78,7 +78,7 @@ function gerarHtmlImpressao(oficio: Oficio): string {
       line-height: 1.5;
       color: #000;
       background: #fff;
-      padding: 47mm 20mm 28mm 30mm;
+      padding: 47mm 20mm 35mm 30mm;
     }
 
     #cabecalho {
@@ -89,7 +89,7 @@ function gerarHtmlImpressao(oficio: Oficio): string {
       align-items: center;
       justify-content: center;
       padding: 5mm 20mm 3mm 30mm;
-      border-bottom: 1px solid #ccc;
+      
       background: #fff;
     }
     #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
@@ -103,7 +103,7 @@ function gerarHtmlImpressao(oficio: Oficio): string {
       justify-content: center;
       font-size: 8pt;
       color: #555;
-      border-top: 1px solid #ccc;
+      
       padding: 0 20mm 0 30mm;
       background: #fff;
     }
@@ -219,7 +219,7 @@ export default function PdfPage() {
           color: #000;
         }
         .preview-cabecalho {
-          border-bottom: 1px solid #ccc;
+          
           padding: 5mm 20mm 3mm 30mm;
           display: flex;
           align-items: center;
@@ -230,7 +230,7 @@ export default function PdfPage() {
         .preview-cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
         .preview-corpo { flex: 1; padding: 8mm 20mm 8mm 30mm; }
         .preview-rodape {
-          border-top: 1px solid #ccc;
+          
           padding: 3mm 20mm;
           font-size: 8pt;
           color: #555;
