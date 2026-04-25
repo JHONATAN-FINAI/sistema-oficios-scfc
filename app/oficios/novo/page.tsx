@@ -201,7 +201,7 @@ export default function NovoOficioPage() {
       color: #000;
       background: #fff;
       /* padding reserva espaço: topo=cabeçalho(47mm), baixo=rodapé(22mm), lados */
-      padding: 47mm 20mm 35mm 30mm;
+      padding: 47mm 20mm 45mm 30mm;
     }
 
     /* Cabeçalho — fixo no TOPO físico de cada página */
@@ -242,7 +242,8 @@ export default function NovoOficioPage() {
     .destinatario { margin-bottom: 18px; line-height: 1.7; }
     .assunto { font-weight: bold; margin-bottom: 20px; }
     .corpo { text-align: justify; }
-    .corpo p { margin: 0 0 8px 0; text-align: justify; }
+    .corpo p { margin: 0 0 8px 0; text-align: justify; page-break-inside: avoid; orphans: 3; widows: 3; }
+    .corpo table { page-break-inside: avoid; }
     .corpo br { display: block; margin-bottom: 6px; }
     .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
     .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
@@ -445,12 +446,12 @@ export default function NovoOficioPage() {
                       width: 605px;
                       min-height: 1123px;
                       margin: 20px auto;
-                      padding: 178px 0 132px 0;
+                      padding: 178px 0 170px 0;
                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                       box-sizing: border-box;
                       position: relative;
                     }
-                    p { margin: 0 0 8px 0; text-align: justify; }
+                    p { margin: 0 0 8px 0; text-align: justify; page-break-inside: avoid; orphans: 3; widows: 3; }
                     table { border-collapse: collapse; width: 100%; font-size: 11pt; }
                     table, th, td { border: 1px solid black; }
                     th, td { padding: 5px; }
@@ -489,7 +490,7 @@ export default function NovoOficioPage() {
                        * onde o Chrome quebra a página na impressão.
                        */
                       const PADDING_TOP = 178;
-                      const AREA_CONTEUDO = 813;
+                      const AREA_CONTEUDO = 775;
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
