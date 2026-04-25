@@ -152,23 +152,16 @@ export default function NovoOficioPage() {
     let conteudoAtual = "";
     if (editorRef.current) {
       const doc = editorRef.current.getDoc();
-      // Remove todos os marcadores de página do DOM temporariamente
-      const marcadores = doc.querySelectorAll(".page-marker");
-      const marcadoresArr: HTMLElement[] = Array.from(marcadores);
-      marcadoresArr.forEach((el) => el.remove());
-      // Pega o conteúdo limpo
+      doc.querySelectorAll(".page-marker, .pg-header").forEach((el: Element) => el.remove());
       conteudoAtual = editorRef.current.getContent();
-      // Recoloca os marcadores (para não afetar a edição)
-      setTimeout(() => {
-        // Dispara o evento para recriar os marcadores
-        editorRef.current?.fire("SetContent");
-      }, 100);
+      setTimeout(() => { editorRef.current?.fire("SetContent"); }, 100);
     } else {
       conteudoAtual = conteudo;
     }
     // Segurança extra: remove qualquer rastro via regex
     const conteudoLimpo = conteudoAtual
       .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*class="pg-header"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
       .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
 
     const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
@@ -311,7 +304,18 @@ export default function NovoOficioPage() {
 
   async function salvar(gerarPdf = false) {
     if (!assunto.trim()) { alert("Informe o assunto do ofício."); return; }
-    const conteudoAtual = editorRef.current ? editorRef.current.getContent() : conteudo;
+    let conteudoAtual = "";
+    if (editorRef.current) {
+      const doc = editorRef.current.getDoc();
+      doc.querySelectorAll(".page-marker, .pg-header").forEach((el: Element) => el.remove());
+      conteudoAtual = editorRef.current.getContent();
+      setTimeout(() => { editorRef.current?.fire("SetContent"); }, 100);
+    } else {
+      conteudoAtual = conteudo;
+    }
+    conteudoAtual = conteudoAtual
+      .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*class="pg-header"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
     if (!conteudoAtual.trim()) { alert("O conteúdo do ofício está vazio."); return; }
     setSalvando(true);
     try {
@@ -451,36 +455,109 @@ export default function NovoOficioPage() {
                     'width': '100%'
                   },
                   content_style: `
+                    /*
+                     * Editor simula páginas A4 com área útil idêntica à impressão.
+                     * Área útil: 775px de altura (205mm) x 605px de largura (160mm)
+                     * = 297mm - 47mm(cab) - 45mm(rod) = 205mm
+                     * = 210mm - 30mm(esq) - 20mm(dir) = 160mm
+                     *
+                     * O body tem padding: 178px top (cabeçalho) + 170px bottom (rodapé)
+                     * para a 1ª página. Marcadores absolutos simulam cabeçalho/rodapé
+                     * nas quebras de página seguintes.
+                     */
+                    html, body {
+                      background: #525659 !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
+                    }
                     body {
                       font-family: Arial, sans-serif;
                       font-size: 12pt;
                       line-height: 1.5;
                       color: #000;
-                      background: #c8c8c8;
-                      margin: 0;
-                      padding: 0;
-                    }
-                    .page {
-                      background: white;
-                      width: 605px;
+                      /* Área útil da 1a página: entre padding-top e padding-bottom */
+                      padding-top: 198px;   /* 47mm cab + 5mm folga */
+                      padding-bottom: 195px; /* 45mm rod + 5mm folga */
+                      padding-left: 113px;  /* 30mm */
+                      padding-right: 76px;  /* 20mm */
+                      width: 794px;
                       min-height: 1123px;
-                      margin: 20px auto;
-                      padding: 178px 0 170px 0;
-                      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                       box-sizing: border-box;
                       position: relative;
+                      /* Folha branca com sombra */
+                      background-color: white !important;
+                      box-shadow: 0 0 0 20px #525659, 4px 4px 16px rgba(0,0,0,0.4);
                     }
-                    p { margin: 0 0 8px 0; text-align: justify; page-break-inside: avoid; orphans: 3; widows: 3; }
+                    p { margin: 0 0 8px 0; text-align: justify; }
                     table { border-collapse: collapse; width: 100%; font-size: 11pt; }
                     table, th, td { border: 1px solid black; }
                     th, td { padding: 5px; }
+                    /* Cabeçalho fixo da 1a página (topo do body) */
+                    .pg-header {
+                      position: absolute;
+                      top: 0; left: 0; right: 0;
+                      height: 190px;
+                      background: #f9f9f9;
+                      border-bottom: 2px solid #1565C0;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      padding: 12px 76px 8px 113px;
+                    }
+                    .pg-header img { max-height: 140px; max-width: 100%; object-fit: contain; }
+                    /* Separador + cab/rod de páginas seguintes (position:absolute) */
+                    .page-marker {
+                      position: absolute;
+                      left: 0; right: 0;
+                      pointer-events: none;
+                      z-index: 9999;
+                      background: transparent;
+                    }
+                    .page-marker .pm-rodape {
+                      height: 185px;
+                      background: #f9f9f9;
+                      border-top: 2px solid #1565C0;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 8pt;
+                      color: #555;
+                      font-family: Arial, sans-serif;
+                      padding: 0 76px 0 113px;
+                    }
+                    .page-marker .pm-sep {
+                      height: 28px;
+                      background: #373b3e;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                    }
+                    .page-marker .pm-sep span {
+                      background: #e53935;
+                      color: #fff;
+                      font-size: 9px;
+                      padding: 2px 12px;
+                      border-radius: 3px;
+                      font-family: Arial, sans-serif;
+                    }
+                    .page-marker .pm-cabecalho {
+                      height: 190px;
+                      background: #f9f9f9;
+                      border-bottom: 2px solid #1565C0;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      padding: 12px 76px 8px 113px;
+                    }
+                    .page-marker .pm-cabecalho img {
+                      max-height: 140px; max-width: 100%; object-fit: contain;
+                    }
                   `,
                   branding: false,
                   promotion: false,
                   forced_root_block: "p",
-                  body_class: "page",
                   min_height: 900,
-                  autoresize_bottom_margin: 50,
+                  autoresize_bottom_margin: 80,
                   setup: (editor: any) => {
                     editor.ui.registry.addButton("recuoPrimeiraLinha", {
                       text: "Recuo ¶",
@@ -498,82 +575,73 @@ export default function NovoOficioPage() {
                       const doc = editor.getDoc();
                       const body = doc.body;
 
-                      /*
-                       * Estratégia: simular visualmente no editor o espaço que
-                       * o cabeçalho e rodapé ocupam na impressão real.
-                       *
-                       * Na impressão (@page margin:0):
-                       *   - Cabeçalho fixo: height 47mm = 178px
-                       *   - Rodapé fixo:    height 28mm = 106px
-                       *   - Entre páginas o Chrome "perde": 47mm + 28mm = 75mm = 283px
-                       *
-                       * No editor, a 1ª página tem padding-top=178px (simula cabeçalho).
-                       * O conteúdo útil por página = 297mm - 47mm - 45mm = 205mm = 775px.
-                       *
-                       * Cada "quebra visual" entre páginas no editor deve mostrar:
-                       *   - Rodapé (cinza, ~60px de altura visual)
-                       *   - Separador de página (fundo cinza escuro, ~20px)
-                       *   - Cabeçalho da próxima página (azul claro, ~80px)
-                       * Total do bloco visual = ~160px
-                       *
-                       * Posição do bloco N no body:
-                       *   top = PADDING_TOP + N * AREA_UTIL
-                       *   PADDING_TOP = 178px (cabeçalho da 1a página já no padding do .page)
-                       *   AREA_UTIL   = 775px (conteúdo por página)
-                       */
-                      const PADDING_TOP = 178;
-                      const AREA_UTIL = 775;
-                      const BLOCO_ALTURA = 160; // altura do bloco visual rodapé+separador+cabeçalho
+                      const CAB_URL = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
+                      const ROD_TEXTO = "Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000";
 
-                      const CABECALHO_URL = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
-                      const RODAPE_TEXTO = "Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000";
+                      // Insere o cabeçalho da 1ª página (fixo no topo do body)
+                      function garantirCabecalhoPrimeiraPagina() {
+                        if (!doc.querySelector(".pg-header")) {
+                          const h = doc.createElement("div");
+                          h.className = "pg-header";
+                          h.setAttribute("contenteditable", "false");
+                          h.innerHTML = '<img src="' + CAB_URL + '" />';
+                          body.insertBefore(h, body.firstChild);
+                        }
+                      }
+
+                      /*
+                       * CÁLCULO DAS POSIÇÕES:
+                       * Área útil por página = 775px (205mm a 96dpi)
+                       * Bloco de separação (rodapé+sep+cabeçalho) = 185+28+190 = 403px
+                       *
+                       * O body tem:
+                       *   padding-top: 198px  (cabeçalho 1ª pág = 190px + 8px folga)
+                       *   padding-bottom: 195px (rodapé)
+                       *
+                       * 1ª quebra (top do marcador 1):
+                       *   198 + 775 = 973px a partir do topo do body
+                       *
+                       * 2ª quebra (top do marcador 2):
+                       *   198 + 775 + 403 + 775 = 2151px
+                       *
+                       * N-ésima quebra:
+                       *   198 + N*(775 + 403) - 403    (simplificado)
+                       *   = 198 + N*1178 - 403
+                       *   Ou: top_N = PAD_TOP + N*AREA + (N-1)*BLOCO
+                       */
+                      const PAD_TOP = 198;
+                      const AREA = 775;
+                      const BLOCO = 403; // altura total do bloco rodapé+sep+cabeçalho
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
+                        garantirCabecalhoPrimeiraPagina();
 
-                        // Recalcula a altura total do body SEM os blocos de marcador
-                        // (os marcadores têm position:absolute então não afetam scrollHeight)
                         const bodyHeight = body.scrollHeight;
-                        let pagina = 1;
-
-                        while (PADDING_TOP + pagina * AREA_UTIL < bodyHeight + BLOCO_ALTURA * (pagina - 1)) {
-                          const posTop = PADDING_TOP + pagina * AREA_UTIL;
+                        let n = 1;
+                        while (true) {
+                          const topMarcador = PAD_TOP + n * AREA + (n - 1) * BLOCO;
+                          if (topMarcador >= bodyHeight + BLOCO) break;
 
                           const marker = doc.createElement("div");
                           marker.className = "page-marker";
                           marker.setAttribute("contenteditable", "false");
-                          marker.style.cssText =
-                            "position:absolute;" +
-                            "left:-40px;right:-40px;" +
-                            "top:" + posTop + "px;" +
-                            "height:" + BLOCO_ALTURA + "px;" +
-                            "pointer-events:none;" +
-                            "z-index:9999;" +
-                            "display:flex;flex-direction:column;overflow:hidden;";
+                          marker.style.top = topMarcador + "px";
+                          marker.style.height = BLOCO + "px";
 
                           marker.innerHTML =
-                            // Rodapé da página atual
-                            '<div style="background:#f5f5f5;border-top:1px solid #bbb;height:50px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#888;font-family:Arial,sans-serif;padding:0 40px;">' +
-                              RODAPE_TEXTO +
-                            '</div>' +
-                            // Separador entre páginas
-                            '<div style="background:#525659;height:20px;display:flex;align-items:center;justify-content:center;">' +
-                              '<span style="background:#e53935;color:#fff;font-size:9px;padding:1px 10px;border-radius:3px;font-family:Arial,sans-serif;letter-spacing:0.5px;">── Página ' + (pagina + 1) + ' ──</span>' +
-                            '</div>' +
-                            // Cabeçalho da próxima página
-                            '<div style="background:#f5f5f5;border-bottom:1px solid #bbb;height:90px;display:flex;align-items:center;justify-content:center;padding:8px 40px;">' +
-                              '<img src="' + CABECALHO_URL + '" style="max-height:70px;max-width:100%;object-fit:contain;" />' +
-                            '</div>';
+                            '<div class="pm-rodape">' + ROD_TEXTO + '</div>' +
+                            '<div class="pm-sep"><span>Página ' + (n + 1) + '</span></div>' +
+                            '<div class="pm-cabecalho"><img src="' + CAB_URL + '" /></div>';
 
-                          body.style.position = "relative";
                           body.appendChild(marker);
-                          pagina++;
+                          n++;
                         }
                       }
 
-                      editor.on("input keyup Change", atualizarMarcadores);
-                      editor.on("SetContent", atualizarMarcadores);
-                      setTimeout(atualizarMarcadores, 800);
+                      editor.on("input keyup Change NodeChange", atualizarMarcadores);
+                      editor.on("SetContent", () => setTimeout(atualizarMarcadores, 300));
+                      setTimeout(atualizarMarcadores, 600);
                     });
                   },
                 }}
