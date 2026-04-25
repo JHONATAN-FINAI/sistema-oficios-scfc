@@ -78,7 +78,7 @@ function gerarHtmlImpressao(oficio: Oficio): string {
       line-height: 1.5;
       color: #000;
       background: #fff;
-      padding: 47mm 20mm 45mm 30mm;
+      padding: 47mm 20mm 28mm 30mm;
     }
 
     #cabecalho {

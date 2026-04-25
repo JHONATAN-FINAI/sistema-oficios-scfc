@@ -214,7 +214,7 @@ export default function NovoOficioPage() {
       color: #000;
       background: #fff;
       /* padding reserva espaço: topo=cabeçalho(47mm), baixo=rodapé(22mm), lados */
-      padding: 47mm 20mm 45mm 30mm;
+      padding: 47mm 20mm 28mm 30mm;
     }
 
     /* Cabeçalho — fixo no TOPO físico de cada página */
@@ -490,7 +490,7 @@ export default function NovoOficioPage() {
                       position: relative;
                       /* Área de texto respeitando cabeçalho e rodapé */
                       padding-top: 178px;
-                      padding-bottom: 170px;
+                      padding-bottom: 106px;
                       padding-left: 113px;
                       padding-right: 76px;
                     }
@@ -498,7 +498,7 @@ export default function NovoOficioPage() {
                     #pg-cab {
                       position: absolute;
                       top: 0; left: 0; right: 0;
-                      height: 170px;
+                      height: 178px;
                       background: #fff;
                       border-bottom: 1px solid #ccc;
                       display: flex;
@@ -516,7 +516,7 @@ export default function NovoOficioPage() {
                     #pg-rod {
                       position: absolute;
                       bottom: 0; left: 0; right: 0;
-                      height: 162px;
+                      height: 106px;
                       background: #fff;
                       border-top: 1px solid #ccc;
                       display: flex;
@@ -536,7 +536,7 @@ export default function NovoOficioPage() {
                       z-index: 100;
                     }
                     .page-break-marker .pbm-rod {
-                      height: 162px;
+                      height: 106px;
                       background: #fff;
                       border-top: 1px solid #ccc;
                       display: flex;
@@ -558,7 +558,7 @@ export default function NovoOficioPage() {
                       font-family: Arial, sans-serif;
                     }
                     .page-break-marker .pbm-cab {
-                      height: 170px;
+                      height: 178px;
                       background: #fff;
                       border-bottom: 1px solid #ccc;
                       display: flex;
@@ -626,8 +626,8 @@ export default function NovoOficioPage() {
                        *   top = PAD_TOP + N*AREA + (N-1)*BLOCO
                        */
                       const PAD_TOP = 178;
-                      const AREA = 775;
-                      const BLOCO = 356;
+                      const AREA = 839;
+                      const BLOCO = 308;
 
                       function atualizarMarcadores() {
                         // Remove marcadores antigos (mas não cab/rod fixos)
