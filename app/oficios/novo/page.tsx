@@ -148,13 +148,32 @@ export default function NovoOficioPage() {
   }
 
   function visualizarImpressao() {
-    const conteudoAtual = editorRef.current ? editorRef.current.getContent() : conteudo;
+    // Remove marcadores via DOM antes de extrair o conteúdo — mais confiável que regex
+    let conteudoAtual = "";
+    if (editorRef.current) {
+      const doc = editorRef.current.getDoc();
+      // Remove todos os marcadores de página do DOM temporariamente
+      const marcadores = doc.querySelectorAll(".page-marker");
+      const marcadoresArr: HTMLElement[] = Array.from(marcadores);
+      marcadoresArr.forEach((el) => el.remove());
+      // Pega o conteúdo limpo
+      conteudoAtual = editorRef.current.getContent();
+      // Recoloca os marcadores (para não afetar a edição)
+      setTimeout(() => {
+        // Dispara o evento para recriar os marcadores
+        editorRef.current?.fire("SetContent");
+      }, 100);
+    } else {
+      conteudoAtual = conteudo;
+    }
+    // Segurança extra: remove qualquer rastro via regex
+    const conteudoLimpo = conteudoAtual
+      .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
+
     const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
     const dataAtual = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
     const cabecalhoUrl = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
-    const conteudoLimpo = conteudoAtual
-      .replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "")
-      .replace(/<div[^>]*class="mce-pagebreak"[^>]*>.*?<\/div>/gi, "");
 
     let destinatarioHtml = "";
     if (dest) {
