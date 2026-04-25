@@ -152,7 +152,7 @@ export default function NovoOficioPage() {
     let conteudoAtual = "";
     if (editorRef.current) {
       const doc = editorRef.current.getDoc();
-      doc.querySelectorAll(".page-marker, .pg-header").forEach((el: Element) => el.remove());
+      doc.querySelectorAll(".page-break-marker, #pg-cab, #pg-rod").forEach((el: Element) => el.remove());
       conteudoAtual = editorRef.current.getContent();
       setTimeout(() => { editorRef.current?.fire("SetContent"); }, 100);
     } else {
@@ -160,8 +160,9 @@ export default function NovoOficioPage() {
     }
     // Segurança extra: remove qualquer rastro via regex
     const conteudoLimpo = conteudoAtual
-      .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
-      .replace(/<div[^>]*class="pg-header"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*class="page-break-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*id="pg-cab"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*id="pg-rod"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
       .replace(/<div[^>]*class="mce-pagebreak"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
 
     const dest = destinatarios.find((d) => d.id === Number(destinatarioId));
@@ -307,15 +308,16 @@ export default function NovoOficioPage() {
     let conteudoAtual = "";
     if (editorRef.current) {
       const doc = editorRef.current.getDoc();
-      doc.querySelectorAll(".page-marker, .pg-header").forEach((el: Element) => el.remove());
+      doc.querySelectorAll(".page-break-marker, #pg-cab, #pg-rod").forEach((el: Element) => el.remove());
       conteudoAtual = editorRef.current.getContent();
       setTimeout(() => { editorRef.current?.fire("SetContent"); }, 100);
     } else {
       conteudoAtual = conteudo;
     }
     conteudoAtual = conteudoAtual
-      .replace(/<div[^>]*class="page-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
-      .replace(/<div[^>]*class="pg-header"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
+      .replace(/<div[^>]*class="page-break-marker"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*id="pg-cab"[^>]*>[\s\S]*?<\/div>\s*/gi, "")
+      .replace(/<div[^>]*id="pg-rod"[^>]*>[\s\S]*?<\/div>\s*/gi, "");
     if (!conteudoAtual.trim()) { alert("O conteúdo do ofício está vazio."); return; }
     setSalvando(true);
     try {
@@ -456,67 +458,87 @@ export default function NovoOficioPage() {
                   },
                   content_style: `
                     /*
-                     * Editor simula páginas A4 com área útil idêntica à impressão.
-                     * Área útil: 775px de altura (205mm) x 605px de largura (160mm)
-                     * = 297mm - 47mm(cab) - 45mm(rod) = 205mm
-                     * = 210mm - 30mm(esq) - 20mm(dir) = 160mm
+                     * Simulação fiel de A4 no editor.
                      *
-                     * O body tem padding: 178px top (cabeçalho) + 170px bottom (rodapé)
-                     * para a 1ª página. Marcadores absolutos simulam cabeçalho/rodapé
-                     * nas quebras de página seguintes.
+                     * Dimensões idênticas à impressão real:
+                     *   Largura A4:        210mm = 794px
+                     *   Padding esq:        30mm = 113px  (margem esq impressão)
+                     *   Padding dir:        20mm =  76px  (margem dir impressão)
+                     *   Padding topo:       47mm = 178px  (cabeçalho)
+                     *   Padding base:       45mm = 170px  (rodapé)
+                     *   Área útil altura:  205mm = 775px  (297-47-45)
+                     *   Área útil largura: 160mm = 605px  (210-30-20)
+                     *
+                     * Cabeçalho e rodapé são simulados via ::before / ::after
+                     * com imagem de fundo — não interferem no conteúdo editável.
                      */
-                    html, body {
-                      background: #525659 !important;
-                      margin: 0 !important;
-                      padding: 0 !important;
+                    html {
+                      background: #525659;
                     }
                     body {
                       font-family: Arial, sans-serif;
                       font-size: 12pt;
                       line-height: 1.5;
                       color: #000;
-                      /* Área útil da 1a página: entre padding-top e padding-bottom */
-                      padding-top: 198px;   /* 47mm cab + 5mm folga */
-                      padding-bottom: 195px; /* 45mm rod + 5mm folga */
-                      padding-left: 113px;  /* 30mm */
-                      padding-right: 76px;  /* 20mm */
+                      background: white;
+                      /* Largura A4 */
                       width: 794px;
                       min-height: 1123px;
+                      margin: 20px auto;
                       box-sizing: border-box;
+                      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
                       position: relative;
-                      /* Folha branca com sombra */
-                      background-color: white !important;
-                      box-shadow: 0 0 0 20px #525659, 4px 4px 16px rgba(0,0,0,0.4);
+                      /* Área de texto respeitando cabeçalho e rodapé */
+                      padding-top: 178px;
+                      padding-bottom: 170px;
+                      padding-left: 113px;
+                      padding-right: 76px;
                     }
-                    p { margin: 0 0 8px 0; text-align: justify; }
-                    table { border-collapse: collapse; width: 100%; font-size: 11pt; }
-                    table, th, td { border: 1px solid black; }
-                    th, td { padding: 5px; }
-                    /* Cabeçalho fixo da 1a página (topo do body) */
-                    .pg-header {
+                    /* Cabeçalho simulado no topo de CADA página via elemento fixo */
+                    #pg-cab {
                       position: absolute;
                       top: 0; left: 0; right: 0;
-                      height: 190px;
-                      background: #f9f9f9;
-                      border-bottom: 2px solid #1565C0;
+                      height: 170px;
+                      background: #fff;
+                      border-bottom: 1px solid #ccc;
                       display: flex;
                       align-items: center;
                       justify-content: center;
-                      padding: 12px 76px 8px 113px;
+                      padding: 10px 76px 6px 113px;
+                      pointer-events: none;
                     }
-                    .pg-header img { max-height: 140px; max-width: 100%; object-fit: contain; }
-                    /* Separador + cab/rod de páginas seguintes (position:absolute) */
-                    .page-marker {
+                    #pg-cab img {
+                      max-height: 130px;
+                      max-width: 100%;
+                      object-fit: contain;
+                    }
+                    /* Rodapé simulado no fundo da CADA página */
+                    #pg-rod {
+                      position: absolute;
+                      bottom: 0; left: 0; right: 0;
+                      height: 162px;
+                      background: #fff;
+                      border-top: 1px solid #ccc;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 8pt;
+                      color: #555;
+                      font-family: Arial, sans-serif;
+                      padding: 0 76px 0 113px;
+                      pointer-events: none;
+                    }
+                    /* Marcador de quebra de página */
+                    .page-break-marker {
                       position: absolute;
                       left: 0; right: 0;
                       pointer-events: none;
-                      z-index: 9999;
-                      background: transparent;
+                      z-index: 100;
                     }
-                    .page-marker .pm-rodape {
-                      height: 185px;
-                      background: #f9f9f9;
-                      border-top: 2px solid #1565C0;
+                    .page-break-marker .pbm-rod {
+                      height: 162px;
+                      background: #fff;
+                      border-top: 1px solid #ccc;
                       display: flex;
                       align-items: center;
                       justify-content: center;
@@ -525,33 +547,35 @@ export default function NovoOficioPage() {
                       font-family: Arial, sans-serif;
                       padding: 0 76px 0 113px;
                     }
-                    .page-marker .pm-sep {
-                      height: 28px;
+                    .page-break-marker .pbm-sep {
+                      height: 24px;
                       background: #373b3e;
                       display: flex;
                       align-items: center;
                       justify-content: center;
-                    }
-                    .page-marker .pm-sep span {
-                      background: #e53935;
                       color: #fff;
                       font-size: 9px;
-                      padding: 2px 12px;
-                      border-radius: 3px;
                       font-family: Arial, sans-serif;
                     }
-                    .page-marker .pm-cabecalho {
-                      height: 190px;
-                      background: #f9f9f9;
-                      border-bottom: 2px solid #1565C0;
+                    .page-break-marker .pbm-cab {
+                      height: 170px;
+                      background: #fff;
+                      border-bottom: 1px solid #ccc;
                       display: flex;
                       align-items: center;
                       justify-content: center;
-                      padding: 12px 76px 8px 113px;
+                      padding: 10px 76px 6px 113px;
                     }
-                    .page-marker .pm-cabecalho img {
-                      max-height: 140px; max-width: 100%; object-fit: contain;
+                    .page-break-marker .pbm-cab img {
+                      max-height: 130px;
+                      max-width: 100%;
+                      object-fit: contain;
                     }
+                    /* Conteúdo */
+                    p { margin: 0 0 8px 0; text-align: justify; }
+                    table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+                    table, th, td { border: 1px solid black; }
+                    th, td { padding: 5px; }
                   `,
                   branding: false,
                   promotion: false,
@@ -576,75 +600,73 @@ export default function NovoOficioPage() {
                       const body = doc.body;
 
                       const CAB_URL = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
-                      const ROD_TEXTO = "Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000";
+                      const ROD = "Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000";
 
-                      // Insere o cabeçalho da 1ª página (fixo no topo do body)
-                      function garantirCabecalhoPrimeiraPagina() {
-                        if (!doc.querySelector(".pg-header")) {
-                          const h = doc.createElement("div");
-                          h.className = "pg-header";
-                          h.setAttribute("contenteditable", "false");
-                          h.innerHTML = '<img src="' + CAB_URL + '" />';
-                          body.insertBefore(h, body.firstChild);
-                        }
-                      }
+                      // Cabeçalho fixo da 1ª página
+                      const cab = doc.createElement("div");
+                      cab.id = "pg-cab";
+                      cab.setAttribute("contenteditable", "false");
+                      cab.innerHTML = '<img src="' + CAB_URL + '" />';
+                      body.insertBefore(cab, body.firstChild);
+
+                      // Rodapé da 1ª página (ficará no fundo do body quando não há 2ª pág)
+                      const rod = doc.createElement("div");
+                      rod.id = "pg-rod";
+                      rod.setAttribute("contenteditable", "false");
+                      rod.textContent = ROD;
+                      body.appendChild(rod);
 
                       /*
-                       * CÁLCULO DAS POSIÇÕES:
-                       * Área útil por página = 775px (205mm a 96dpi)
-                       * Bloco de separação (rodapé+sep+cabeçalho) = 185+28+190 = 403px
+                       * ÁREAS:
+                       *   PAD_TOP  = 178px (47mm — cabeçalho 1ª pág já no padding)
+                       *   AREA     = 775px (205mm — área útil por página)
+                       *   BLOCO    = 356px (162+24+170 — rodapé+sep+cabeçalho)
                        *
-                       * O body tem:
-                       *   padding-top: 198px  (cabeçalho 1ª pág = 190px + 8px folga)
-                       *   padding-bottom: 195px (rodapé)
-                       *
-                       * 1ª quebra (top do marcador 1):
-                       *   198 + 775 = 973px a partir do topo do body
-                       *
-                       * 2ª quebra (top do marcador 2):
-                       *   198 + 775 + 403 + 775 = 2151px
-                       *
-                       * N-ésima quebra:
-                       *   198 + N*(775 + 403) - 403    (simplificado)
-                       *   = 198 + N*1178 - 403
-                       *   Ou: top_N = PAD_TOP + N*AREA + (N-1)*BLOCO
+                       * Posição do N-ésimo marcador (N começa em 1):
+                       *   top = PAD_TOP + N*AREA + (N-1)*BLOCO
                        */
-                      const PAD_TOP = 198;
+                      const PAD_TOP = 178;
                       const AREA = 775;
-                      const BLOCO = 403; // altura total do bloco rodapé+sep+cabeçalho
+                      const BLOCO = 356;
 
                       function atualizarMarcadores() {
-                        doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
-                        garantirCabecalhoPrimeiraPagina();
+                        // Remove marcadores antigos (mas não cab/rod fixos)
+                        doc.querySelectorAll(".page-break-marker").forEach((el: Element) => el.remove());
+
+                        // Reposiciona o rodapé fixo no fundo do body
+                        const rodEl = doc.getElementById("pg-rod");
+                        if (rodEl) body.appendChild(rodEl);
 
                         const bodyHeight = body.scrollHeight;
                         let n = 1;
+
                         while (true) {
                           const topMarcador = PAD_TOP + n * AREA + (n - 1) * BLOCO;
-                          if (topMarcador >= bodyHeight + BLOCO) break;
+                          // Para de criar marcadores se estiver muito além do conteúdo
+                          if (topMarcador > bodyHeight + AREA) break;
 
                           const marker = doc.createElement("div");
-                          marker.className = "page-marker";
+                          marker.className = "page-break-marker";
                           marker.setAttribute("contenteditable", "false");
                           marker.style.top = topMarcador + "px";
                           marker.style.height = BLOCO + "px";
-
                           marker.innerHTML =
-                            '<div class="pm-rodape">' + ROD_TEXTO + '</div>' +
-                            '<div class="pm-sep"><span>Página ' + (n + 1) + '</span></div>' +
-                            '<div class="pm-cabecalho"><img src="' + CAB_URL + '" /></div>';
+                            '<div class="pbm-rod">' + ROD + '</div>' +
+                            '<div class="pbm-sep">— Página ' + (n + 1) + ' —</div>' +
+                            '<div class="pbm-cab"><img src="' + CAB_URL + '" /></div>';
 
-                          body.appendChild(marker);
+                          // Insere antes do rodapé fixo
+                          if (rodEl) body.insertBefore(marker, rodEl);
+                          else body.appendChild(marker);
                           n++;
                         }
                       }
 
                       editor.on("input keyup Change NodeChange", atualizarMarcadores);
-                      editor.on("SetContent", () => setTimeout(atualizarMarcadores, 300));
-                      setTimeout(atualizarMarcadores, 600);
+                      editor.on("SetContent", () => setTimeout(atualizarMarcadores, 200));
+                      setTimeout(atualizarMarcadores, 500);
                     });
-                  },
-                }}
+                  },                }}
                 onEditorChange={(content) => setConteudo(content)}
               />
             </div>
