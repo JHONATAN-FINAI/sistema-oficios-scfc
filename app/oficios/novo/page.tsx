@@ -478,26 +478,48 @@ export default function NovoOficioPage() {
                     editor.on("init", () => {
                       const doc = editor.getDoc();
                       const body = doc.body;
+
                       /*
-                       * Posição do marcador N (N=1,2,3...):
-                       *   top = PADDING_TOP + N * AREA_CONTEUDO
+                       * Estratégia: simular visualmente no editor o espaço que
+                       * o cabeçalho e rodapé ocupam na impressão real.
                        *
-                       * PADDING_TOP = 178px (47mm — espelho do cabeçalho de impressão)
-                       * AREA_CONTEUDO = 839px (222mm — área útil por página na impressão)
-                       *   = 297mm - 47mm(cab) - 28mm(rod+segurança) = 222mm = 839px a 96dpi
+                       * Na impressão (@page margin:0):
+                       *   - Cabeçalho fixo: height 47mm = 178px
+                       *   - Rodapé fixo:    height 28mm = 106px
+                       *   - Entre páginas o Chrome "perde": 47mm + 28mm = 75mm = 283px
                        *
-                       * Isso garante que o marcador visual no editor caia exatamente
-                       * onde o Chrome quebra a página na impressão.
+                       * No editor, a 1ª página tem padding-top=178px (simula cabeçalho).
+                       * O conteúdo útil por página = 297mm - 47mm - 45mm = 205mm = 775px.
+                       *
+                       * Cada "quebra visual" entre páginas no editor deve mostrar:
+                       *   - Rodapé (cinza, ~60px de altura visual)
+                       *   - Separador de página (fundo cinza escuro, ~20px)
+                       *   - Cabeçalho da próxima página (azul claro, ~80px)
+                       * Total do bloco visual = ~160px
+                       *
+                       * Posição do bloco N no body:
+                       *   top = PADDING_TOP + N * AREA_UTIL
+                       *   PADDING_TOP = 178px (cabeçalho da 1a página já no padding do .page)
+                       *   AREA_UTIL   = 775px (conteúdo por página)
                        */
                       const PADDING_TOP = 178;
-                      const AREA_CONTEUDO = 775;
+                      const AREA_UTIL = 775;
+                      const BLOCO_ALTURA = 160; // altura do bloco visual rodapé+separador+cabeçalho
+
+                      const CABECALHO_URL = "https://raw.githubusercontent.com/JHONATAN-FINAI/assets-prefeitura-rondonopolis/af6fa70c4657ac5660342f7838f3f067b9f13124/SECRETARIA%20MUNICIPAL%20DE%20ADMINISTRA%C3%87%C3%83O%2C%20GEST%C3%83O%20DE%20PESSOAS%20E%20INOVA%C3%87%C3%83O.png";
+                      const RODAPE_TEXTO = "Prefeitura Municipal de Rondonópolis – MT | Av. Duque de Caxias, 1000 | CEP: 78.800-000 | (66) 3411-7000";
 
                       function atualizarMarcadores() {
                         doc.querySelectorAll(".page-marker").forEach((el: Element) => el.remove());
+
+                        // Recalcula a altura total do body SEM os blocos de marcador
+                        // (os marcadores têm position:absolute então não afetam scrollHeight)
                         const bodyHeight = body.scrollHeight;
                         let pagina = 1;
-                        while (PADDING_TOP + pagina * AREA_CONTEUDO < bodyHeight) {
-                          const posTop = PADDING_TOP + pagina * AREA_CONTEUDO;
+
+                        while (PADDING_TOP + pagina * AREA_UTIL < bodyHeight + BLOCO_ALTURA * (pagina - 1)) {
+                          const posTop = PADDING_TOP + pagina * AREA_UTIL;
+
                           const marker = doc.createElement("div");
                           marker.className = "page-marker";
                           marker.setAttribute("contenteditable", "false");
@@ -505,17 +527,25 @@ export default function NovoOficioPage() {
                             "position:absolute;" +
                             "left:-40px;right:-40px;" +
                             "top:" + posTop + "px;" +
-                            "height:2px;" +
-                            "background:#e53935;" +
+                            "height:" + BLOCO_ALTURA + "px;" +
                             "pointer-events:none;" +
-                            "z-index:9999;";
-                          const label = doc.createElement("span");
-                          label.style.cssText =
-                            "position:absolute;top:-10px;left:50%;transform:translateX(-50%);" +
-                            "background:#e53935;color:#fff;font-size:9px;padding:1px 8px;" +
-                            "border-radius:3px;white-space:nowrap;font-family:Arial,sans-serif;letter-spacing:0.5px;";
-                          label.textContent = "── Página " + (pagina + 1) + " ──";
-                          marker.appendChild(label);
+                            "z-index:9999;" +
+                            "display:flex;flex-direction:column;overflow:hidden;";
+
+                          marker.innerHTML =
+                            // Rodapé da página atual
+                            '<div style="background:#f5f5f5;border-top:1px solid #bbb;height:50px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#888;font-family:Arial,sans-serif;padding:0 40px;">' +
+                              RODAPE_TEXTO +
+                            '</div>' +
+                            // Separador entre páginas
+                            '<div style="background:#525659;height:20px;display:flex;align-items:center;justify-content:center;">' +
+                              '<span style="background:#e53935;color:#fff;font-size:9px;padding:1px 10px;border-radius:3px;font-family:Arial,sans-serif;letter-spacing:0.5px;">── Página ' + (pagina + 1) + ' ──</span>' +
+                            '</div>' +
+                            // Cabeçalho da próxima página
+                            '<div style="background:#f5f5f5;border-bottom:1px solid #bbb;height:90px;display:flex;align-items:center;justify-content:center;padding:8px 40px;">' +
+                              '<img src="' + CABECALHO_URL + '" style="max-height:70px;max-width:100%;object-fit:contain;" />' +
+                            '</div>';
+
                           body.style.position = "relative";
                           body.appendChild(marker);
                           pagina++;
