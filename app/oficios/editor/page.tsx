@@ -52,62 +52,58 @@ function montarHtmlImpressao(params: {
 <head>
 <meta charset="UTF-8">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  @page { size: A4 portrait; margin: 0; }
+    /*
+     * PX idêntico ao editor TinyMCE para correspondência perfeita.
+     * Editor: width=794px, pad-top=178px, pad-bot=106px, pad-l=113px, pad-r=76px
+     * @page em px força o Chrome a usar exatamente o mesmo tamanho.
+     */
+    @page { size: 794px 1123px; margin: 0; }
 
-  html {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  body {
-    font-family: Arial, sans-serif;
-    font-size: 12pt;
-    line-height: 1.5;
-    color: #000;
-    background: #fff;
-    padding: 47mm 20mm 28mm 30mm;
-  }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #000;
+      background: #fff;
+      width: 794px;
+      padding-top: 178px;
+      padding-bottom: 106px;
+      padding-left: 113px;
+      padding-right: 76px;
+    }
 
-  #cabecalho {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 47mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5mm 20mm 3mm 30mm;
-    
-    background: #fff;
-  }
-  #cabecalho img { max-height: 35mm; max-width: 100%; object-fit: contain; }
+    #cabecalho {
+      position: fixed;
+      top: 0; left: 0; right: 0; height: 178px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 76px 6px 113px;
+      background: #fff;
+    }
+    #cabecalho img { max-height: 140px; max-width: 100%; object-fit: contain; }
 
-  #rodape {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 28mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8pt;
-    color: #555;
-    
-    padding: 0 20mm 0 30mm;
-    background: #fff;
-  }
+    #rodape {
+      position: fixed;
+      bottom: 0; left: 0; right: 0; height: 106px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8pt; color: #555;
+      padding: 0 76px 0 113px;
+      background: #fff;
+    }
 
-  .numero-oficio { font-weight: bold; margin-bottom: 12px; }
-  .data-oficio { text-align: right; margin-bottom: 18px; }
-  .destinatario { margin-bottom: 18px; line-height: 1.7; }
-  .assunto { font-weight: bold; margin-bottom: 20px; }
-  .corpo { text-align: justify; }
-  .corpo p { margin: 0 0 8px 0; text-align: justify; page-break-inside: avoid; orphans: 3; widows: 3; }
-  .corpo table { page-break-inside: avoid; }
-  .corpo br { display: block; margin-bottom: 6px; }
-  .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
-  .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
-  .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+    .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+    .data-oficio { text-align: right; margin-bottom: 18px; }
+    .destinatario { margin-bottom: 18px; line-height: 1.7; }
+    .assunto { font-weight: bold; margin-bottom: 20px; }
+    .corpo { text-align: justify; }
+    .corpo p { margin: 0 0 8px 0; text-align: justify; }
+    .corpo br { display: block; margin-bottom: 6px; }
+    .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+    .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+    .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
 </style>
 </head>
 <body>
@@ -330,12 +326,60 @@ export default function EditorPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
-      <style>{`
-        #editor-conteudo { outline: none; }
-        #editor-conteudo p { margin: 0 0 8px 0; }
-        #editor-conteudo table { border-collapse: collapse; width: 100%; }
-        #editor-conteudo td { border: 1px solid #000; padding: 3px 8px; }
-      `}</style>
+      <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /*
+     * PX idêntico ao editor TinyMCE para correspondência perfeita.
+     * Editor: width=794px, pad-top=178px, pad-bot=106px, pad-l=113px, pad-r=76px
+     * @page em px força o Chrome a usar exatamente o mesmo tamanho.
+     */
+    @page { size: 794px 1123px; margin: 0; }
+
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #000;
+      background: #fff;
+      width: 794px;
+      padding-top: 178px;
+      padding-bottom: 106px;
+      padding-left: 113px;
+      padding-right: 76px;
+    }
+
+    #cabecalho {
+      position: fixed;
+      top: 0; left: 0; right: 0; height: 178px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 76px 6px 113px;
+      background: #fff;
+    }
+    #cabecalho img { max-height: 140px; max-width: 100%; object-fit: contain; }
+
+    #rodape {
+      position: fixed;
+      bottom: 0; left: 0; right: 0; height: 106px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8pt; color: #555;
+      padding: 0 76px 0 113px;
+      background: #fff;
+    }
+
+    .numero-oficio { font-weight: bold; margin-bottom: 12px; }
+    .data-oficio { text-align: right; margin-bottom: 18px; }
+    .destinatario { margin-bottom: 18px; line-height: 1.7; }
+    .assunto { font-weight: bold; margin-bottom: 20px; }
+    .corpo { text-align: justify; }
+    .corpo p { margin: 0 0 8px 0; text-align: justify; }
+    .corpo br { display: block; margin-bottom: 6px; }
+    .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+    .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
+    .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
+</style>
 
       <Navbar />
 
