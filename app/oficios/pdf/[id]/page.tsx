@@ -201,7 +201,7 @@ export default function PdfPage() {
 
   return (
     <>
-      <style>
+      <style>{`
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     /*
@@ -254,7 +254,7 @@ export default function PdfPage() {
     .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
     .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
     .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
-</style>
+   `}</style>
 
       <div style={{ minHeight: "100vh", background: "#525659" }}>
         <div style={{ background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.12)", position: "sticky", top: 0, zIndex: 100 }}>
