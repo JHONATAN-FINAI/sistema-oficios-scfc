@@ -326,7 +326,7 @@ export default function EditorPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
-      <style>
+      <style>{``
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     /*
@@ -379,7 +379,7 @@ export default function EditorPage() {
     .corpo table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
     .corpo td, .corpo th { border: 1px solid #000; padding: 4px 8px; }
     .corpo h1, .corpo h2, .corpo h3 { margin: 0 0 8px 0; }
-</style>
+`}</style>
 
       <Navbar />
 
