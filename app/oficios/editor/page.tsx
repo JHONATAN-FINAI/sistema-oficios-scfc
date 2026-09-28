@@ -326,7 +326,7 @@ export default function EditorPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#E8EAED" }}>
-      <style>{``
+      <style>{`
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     /*
