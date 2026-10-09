@@ -1,20 +1,24 @@
+import "dotenv/config";
 import { db } from "../db";
 import { users, destinatarios, templates, classificacaoOrcamentaria } from "../db/schema";
-import { createHash } from "crypto";
-
-function md5(text: string) {
-  return createHash("md5").update(text).digest("hex");
-}
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 async function seed() {
   console.log("Iniciando seed...");
 
-  await db.insert(users).values({
-    email: "admin@scfc.com",
-    senhaHash: md5("admin123"),
+  // A senha inicial NÃO fica mais no código: use SEED_ADMIN_PASSWORD ou anote a gerada abaixo.
+  const senhaAdmin = process.env.SEED_ADMIN_PASSWORD || randomBytes(9).toString("base64url");
+  const criado = await db.insert(users).values({
+    email: (process.env.SEED_ADMIN_EMAIL || "admin@scfc.com").toLowerCase(),
+    senhaHash: await bcrypt.hash(senhaAdmin, 12),
     nome: "Administrador SCFC",
     role: "admin",
-  }).onConflictDoNothing();
+  }).onConflictDoNothing().returning({ email: users.email });
+  if (criado.length) {
+    console.log(`Usuário admin criado: ${criado[0].email}${process.env.SEED_ADMIN_PASSWORD ? "" : ` | senha: ${senhaAdmin}`}`);
+    console.log("⚠️  Troque essa senha após o primeiro acesso.");
+  }
 
   await db.insert(destinatarios).values([
     { codigo: "001", nome: "SECRETARIA MUNICIPAL DE GOVERNO", cidade: "Rondonópolis - MT" },

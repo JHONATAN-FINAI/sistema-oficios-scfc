@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { templates } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   const session = await getServerSession(authOptions);

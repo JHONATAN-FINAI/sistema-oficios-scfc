@@ -1,29 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { oficios, destinatarios, templates } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { conflito, getSessao, invalido, naoAutorizado, naoEncontrado, parseId, respostaDeErro } from "@/lib/api";
+import { atualizarOficioSchema } from "@/lib/validators";
+import { sanitizarConteudo } from "@/lib/sanitize";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+type Ctx = { params: { id: string } };
 
-  const id = Number(params.id);
-  const result = await db
-    .select()
-    .from(oficios)
-    .where(eq(oficios.id, id))
-    .limit(1);
+export async function GET(_req: NextRequest, { params }: Ctx) {
+  if (!(await getSessao())) return naoAutorizado();
+  const id = parseId(params.id);
+  if (!id) return naoEncontrado();
 
-  if (!result.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const [oficio] = await db.select().from(oficios).where(eq(oficios.id, id)).limit(1);
+  if (!oficio) return naoEncontrado();
 
-  const oficio = result[0];
-
-  const [destResult, tplResult] = await Promise.all([
+  const [dest, tpl] = await Promise.all([
     oficio.destinatarioId
       ? db.select().from(destinatarios).where(eq(destinatarios.id, oficio.destinatarioId)).limit(1)
       : Promise.resolve([]),
@@ -34,46 +27,70 @@ export async function GET(
 
   return NextResponse.json({
     ...oficio,
-    destinatario: destResult[0] || null,
-    template: tplResult[0] || null,
+    // conteúdo salvo antes da sanitização existir também passa pelo filtro
+    conteudo: sanitizarConteudo(oficio.conteudo),
+    destinatario: dest[0] ?? null,
+    template: tpl[0] ?? null,
   });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+/**
+ * Regras de edição:
+ *  - rascunho e emitido: texto e dados podem ser alterados (o número é preservado);
+ *  - protocolado e cancelado: texto travado (só o protocolo pode ser ajustado em protocolado).
+ */
+export async function PUT(req: NextRequest, { params }: Ctx) {
+  if (!(await getSessao())) return naoAutorizado();
+  const id = parseId(params.id);
+  if (!id) return naoEncontrado();
 
-  const id = Number(params.id);
-  const body = await req.json();
+  try {
+    const dados = atualizarOficioSchema.parse(await req.json());
+    const [atual] = await db.select().from(oficios).where(eq(oficios.id, id)).limit(1);
+    if (!atual) return naoEncontrado();
 
-  const campos: Record<string, any> = { atualizadoEm: new Date() };
+    const mudaTexto = ["assunto", "conteudo", "templateId", "destinatarioId", "reduzido", "classificacao", "valorEstimado"].some(
+      (k) => (dados as Record<string, unknown>)[k] !== undefined
+    );
+    if (atual.status === "cancelado") return conflito("Ofício cancelado não pode ser alterado.");
+    if (atual.status === "protocolado" && mudaTexto) {
+      return conflito("Ofício protocolado não pode ter o texto alterado. Duplique-o para criar uma nova versão.");
+    }
+    if (dados.protocolo !== undefined && atual.status === "rascunho") {
+      return invalido("Emita o ofício antes de lançar o protocolo.");
+    }
 
-  if (body.assunto !== undefined) campos.assunto = body.assunto;
-if (body.conteudo !== undefined) campos.conteudo = body.conteudo.replace(/<div[^>]*class="page-marker"[^>]*>.*?<\/div>/gi, "");
-  if (body.status !== undefined) campos.status = body.status;
-  if (body.protocolo !== undefined) campos.protocolo = body.protocolo;
-  if (body.templateId !== undefined) campos.templateId = body.templateId;
-  if (body.destinatarioId !== undefined) campos.destinatarioId = body.destinatarioId;
-  if (body.reduzido !== undefined) campos.reduzido = body.reduzido;
-  if (body.classificacao !== undefined) campos.classificacao = body.classificacao;
-  if (body.valorEstimado !== undefined) campos.valorEstimado = body.valorEstimado;
+    const campos: Partial<typeof oficios.$inferInsert> = { atualizadoEm: new Date() };
+    if (dados.assunto !== undefined) campos.assunto = dados.assunto;
+    if (dados.conteudo !== undefined) campos.conteudo = sanitizarConteudo(dados.conteudo);
+    if (dados.templateId !== undefined) campos.templateId = dados.templateId;
+    if (dados.destinatarioId !== undefined) campos.destinatarioId = dados.destinatarioId;
+    if (dados.reduzido !== undefined) campos.reduzido = dados.reduzido;
+    if (dados.classificacao !== undefined) campos.classificacao = dados.classificacao;
+    if (dados.valorEstimado !== undefined) campos.valorEstimado = dados.valorEstimado;
+    if (dados.protocolo !== undefined) {
+      campos.protocolo = dados.protocolo || null;
+      campos.status = dados.protocolo ? "protocolado" : "emitido";
+    }
 
-  await db.update(oficios).set(campos).where(eq(oficios.id, id));
-
-  const updated = await db.select().from(oficios).where(eq(oficios.id, id)).limit(1);
-  return NextResponse.json(updated[0]);
+    const [atualizado] = await db.update(oficios).set(campos).where(eq(oficios.id, id)).returning();
+    return NextResponse.json(atualizado);
+  } catch (err) {
+    return respostaDeErro(err);
+  }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+/** Só rascunhos podem ser excluídos. Ofícios numerados são CANCELADOS (o número nunca é reaproveitado). */
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  if (!(await getSessao())) return naoAutorizado();
+  const id = parseId(params.id);
+  if (!id) return naoEncontrado();
 
-  await db.delete(oficios).where(eq(oficios.id, Number(params.id)));
+  const [atual] = await db.select({ status: oficios.status, numero: oficios.numero }).from(oficios).where(eq(oficios.id, id)).limit(1);
+  if (!atual) return naoEncontrado();
+  if (atual.status !== "rascunho" || atual.numero) {
+    return conflito("Ofícios emitidos não podem ser excluídos; cancele-o informando o motivo.");
+  }
+  await db.delete(oficios).where(eq(oficios.id, id));
   return NextResponse.json({ ok: true });
 }

@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -57,29 +58,46 @@ export const templates = pgTable("templates", {
   criadoEm: timestamp("criado_em").notNull().defaultNow(),
 });
 
-export const oficios = pgTable("oficios", {
-  id: serial("id").primaryKey(),
-  numero: varchar("numero", { length: 50 }).notNull(),
-  ano: integer("ano").notNull(),
-  assunto: text("assunto").notNull(),
-  conteudo: text("conteudo").notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("rascunho"),
-  templateId: integer("template_id").references(() => templates.id, {
-    onDelete: "set null",
-  }),
-  destinatarioId: integer("destinatario_id").references(() => destinatarios.id, {
-    onDelete: "set null",
-  }),
-  autorId: integer("autor_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  reduzido: varchar("reduzido", { length: 20 }),
-  classificacao: jsonb("classificacao"),
-  valorEstimado: varchar("valor_estimado", { length: 100 }),
-  protocolo: varchar("protocolo", { length: 100 }),
-  criadoEm: timestamp("criado_em").notNull().defaultNow(),
-  atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
-});
+export const oficios = pgTable(
+  "oficios",
+  {
+    id: serial("id").primaryKey(),
+    /** Só existe depois de emitido (rascunhos não consomem número). */
+    numero: varchar("numero", { length: 50 }),
+    /** Parte sequencial do número, guardada à parte para garantir unicidade por ano. */
+    sequencia: integer("sequencia"),
+    ano: integer("ano").notNull(),
+    assunto: text("assunto").notNull(),
+    conteudo: text("conteudo").notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("rascunho"),
+    templateId: integer("template_id").references(() => templates.id, {
+      onDelete: "set null",
+    }),
+    destinatarioId: integer("destinatario_id").references(() => destinatarios.id, {
+      onDelete: "set null",
+    }),
+    autorId: integer("autor_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reduzido: varchar("reduzido", { length: 20 }),
+    classificacao: jsonb("classificacao"),
+    valorEstimado: varchar("valor_estimado", { length: 100 }),
+    protocolo: varchar("protocolo", { length: 100 }),
+    emitidoEm: timestamp("emitido_em"),
+    canceladoEm: timestamp("cancelado_em"),
+    motivoCancelamento: text("motivo_cancelamento"),
+    criadoEm: timestamp("criado_em").notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+  },
+  (t) => ({
+    // Impede dois ofícios com o mesmo número no mesmo ano (NULLs não conflitam).
+    sequenciaUnica: uniqueIndex("oficios_ano_sequencia_unique").on(t.ano, t.sequencia),
+    statusIdx: index("oficios_status_idx").on(t.status),
+  })
+);
+
+export const STATUS_OFICIO = ["rascunho", "emitido", "protocolado", "cancelado"] as const;
+export type StatusOficio = (typeof STATUS_OFICIO)[number];
 
 export type User = typeof users.$inferSelect;
 export type Destinatario = typeof destinatarios.$inferSelect;

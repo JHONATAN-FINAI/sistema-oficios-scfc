@@ -1,35 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { api, rotuloNumero, STATUS } from "@/lib/client";
 
 interface Oficio {
-  id: number;
-  numero: string;
-  ano: number;
-  assunto: string;
-  status: string;
-  protocolo: string | null;
-  criadoEm: string;
-  destinatario: { nome: string; codigo: string } | null;
-  template: { nome: string } | null;
+  id: number; numero: string | null; ano: number; assunto: string; status: string;
+  protocolo: string | null; criadoEm: string; emitidoEm: string | null;
+  destinatario: { nome: string; codigo: string } | null; template: { nome: string } | null;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  rascunho: { label: "Rascunho", color: "bg-gray-100 text-gray-700" },
-  emitido: { label: "Emitido", color: "bg-blue-100 text-blue-700" },
-  protocolado: { label: "Protocolado", color: "bg-green-100 text-green-700" },
-  cancelado: { label: "Cancelado", color: "bg-red-100 text-red-700" },
-};
+const POR_PAGINA = 25;
+const input = "border border-[#DDE3EC] rounded-md px-3 py-2 text-[13px] outline-none bg-white focus:border-[#1565C0]";
+const btn = "rounded px-2.5 py-1 text-[11px] font-semibold border-0 cursor-pointer";
 
-const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
-  rascunho: { label: "Rascunho", bg: "#F5F5F5", color: "#616161" },
-  emitido: { label: "Emitido", bg: "#E3F0FF", color: "#1565C0" },
-  protocolado: { label: "Protocolado", bg: "#E8F5E9", color: "#2E7D32" },
-  cancelado: { label: "Cancelado", bg: "#FFEBEE", color: "#C62828" },
-};
+const dataDe = (o: Oficio) => new Date(o.emitidoEm ?? o.criadoEm).toLocaleDateString("pt-BR");
+
+function baixarCsv(linhas: Oficio[]) {
+  const aspas = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const cab = ["Número", "Data", "Destinatário", "Assunto", "Protocolo", "Status"];
+  const corpo = linhas.map((o) =>
+    [rotuloNumero(o), dataDe(o), o.destinatario ? `${o.destinatario.codigo} - ${o.destinatario.nome}` : "", o.assunto, o.protocolo ?? "", STATUS[o.status]?.label ?? o.status].map(aspas).join(";")
+  );
+  // BOM + ';' para o Excel em português abrir com acentos e colunas corretos
+  const blob = new Blob(["\ufeff" + [cab.map(aspas).join(";"), ...corpo].join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `oficios-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 export default function HistoricoPage() {
   const { status } = useSession();
@@ -37,206 +39,178 @@ export default function HistoricoPage() {
 
   const [oficios, setOficios] = useState<Oficio[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [filtroAno, setFiltroAno] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [pagina, setPagina] = useState(1);
 
-  const [modalProtocolo, setModalProtocolo] = useState(false);
-  const [oficioSelecionado, setOficioSelecionado] = useState<Oficio | null>(null);
-  const [novoProtocolo, setNovoProtocolo] = useState("");
-  const [salvandoProtocolo, setSalvandoProtocolo] = useState(false);
+  const [protocolando, setProtocolando] = useState<Oficio | null>(null);
+  const [protocolo, setProtocolo] = useState("");
+  const [excluindo, setExcluindo] = useState<Oficio | null>(null);
+  const [ocupado, setOcupado] = useState(false);
 
-  const [modalExclusao, setModalExclusao] = useState(false);
-  const [oficioParaExcluir, setOficioParaExcluir] = useState<Oficio | null>(null);
-  const [excluindo, setExcluindo] = useState(false);
+  useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
+  const carregar = useCallback(async () => {
+    try { setOficios(await api<Oficio[]>("/api/oficios")); setErro(""); }
+    catch (e: any) { setErro(e.message); }
+    finally { setCarregando(false); }
+  }, []);
+  useEffect(() => { if (status === "authenticated") carregar(); }, [status, carregar]);
+  useEffect(() => setPagina(1), [busca, filtroAno, filtroStatus]);
 
-  useEffect(() => { carregarOficios(); }, []);
+  const anos = useMemo(() => Array.from(new Set(oficios.map((o) => o.ano))).sort((a, b) => b - a), [oficios]);
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return oficios.filter((o) =>
+      (!q || [o.numero, o.assunto, o.destinatario?.nome, o.protocolo].some((v) => v?.toLowerCase().includes(q))) &&
+      (!filtroAno || o.ano === Number(filtroAno)) &&
+      (!filtroStatus || o.status === filtroStatus)
+    );
+  }, [oficios, busca, filtroAno, filtroStatus]);
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
+  const visiveis = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
-  async function carregarOficios() {
-    setCarregando(true);
-    try {
-      const res = await fetch("/api/oficios");
-      setOficios(await res.json());
-    } finally {
-      setCarregando(false);
-    }
+  async function executar(fn: () => Promise<unknown>) {
+    setOcupado(true);
+    try { await fn(); await carregar(); } catch (e: any) { setErro(e.message); } finally { setOcupado(false); }
   }
-
-  async function salvarProtocolo() {
-    if (!oficioSelecionado) return;
-    setSalvandoProtocolo(true);
-    try {
-      await fetch(`/api/oficios/${oficioSelecionado.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ protocolo: novoProtocolo, status: novoProtocolo ? "protocolado" : "emitido" }),
-      });
-      await carregarOficios();
-      setModalProtocolo(false);
-    } finally {
-      setSalvandoProtocolo(false);
-    }
-  }
-
-  async function excluir() {
-    if (!oficioParaExcluir) return;
-    setExcluindo(true);
-    try {
-      await fetch(`/api/oficios/${oficioParaExcluir.id}`, { method: "DELETE" });
-      await carregarOficios();
-      setModalExclusao(false);
-    } finally {
-      setExcluindo(false);
-    }
-  }
-
-  const anos = [...new Set(oficios.map((o) => o.ano))].sort((a, b) => b - a);
-  const filtrados = oficios.filter((o) => {
-    const matchBusca = !busca || o.numero.toLowerCase().includes(busca.toLowerCase()) || o.assunto.toLowerCase().includes(busca.toLowerCase()) || o.destinatario?.nome.toLowerCase().includes(busca.toLowerCase());
-    const matchAno = !filtroAno || o.ano === Number(filtroAno);
-    const matchStatus = !filtroStatus || o.status === filtroStatus;
-    return matchBusca && matchAno && matchStatus;
+  const salvarProtocolo = () => executar(async () => {
+    await api(`/api/oficios/${protocolando!.id}`, { method: "PUT", json: { protocolo: protocolo.trim() || null } });
+    setProtocolando(null);
   });
-
-  function formatarData(iso: string) {
-    return new Date(iso).toLocaleDateString("pt-BR");
-  }
+  const excluir = () => executar(async () => {
+    await api(`/api/oficios/${excluindo!.id}`, { method: "DELETE" });
+    setExcluindo(null);
+  });
+  const duplicar = (o: Oficio) => executar(async () => {
+    const novo = await api<{ id: number }>(`/api/oficios/${o.id}/duplicar`, { method: "POST" });
+    router.push(`/oficios/novo?editar=${novo.id}`);
+  });
 
   if (status === "loading") return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F0F4F8" }}>
+    <div className="min-h-screen bg-[#F0F4F8]">
       <Navbar />
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px" }}>
-        <div style={{ background: "#fff", borderRadius: "10px", border: "1px solid #DDE3EC", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", overflow: "hidden" }}>
-
-          {/* Cabeçalho */}
-          <div style={{ background: "linear-gradient(135deg, #0D3B7A 0%, #1565C0 100%)", borderBottom: "3px solid #F57C00", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div className="max-w-[1280px] mx-auto p-6">
+        <div className="bg-white rounded-[10px] border border-[#DDE3EC] shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b-[3px] border-[#F57C00]" style={{ background: "linear-gradient(135deg, #0D3B7A 0%, #1565C0 100%)" }}>
             <div>
-              <h1 style={{ color: "#fff", fontSize: "18px", fontFamily: "Georgia, serif", fontWeight: "700", margin: "0 0 2px" }}>Histórico de Ofícios</h1>
-              <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "12px", fontFamily: "Arial, sans-serif", margin: 0 }}>{filtrados.length} ofício{filtrados.length !== 1 ? "s" : ""} encontrado{filtrados.length !== 1 ? "s" : ""}</p>
+              <h1 className="text-white text-lg font-bold" style={{ fontFamily: "Georgia, serif" }}>Histórico de Ofícios</h1>
+              <p className="text-white/65 text-xs">{filtrados.length} ofício{filtrados.length !== 1 && "s"} encontrado{filtrados.length !== 1 && "s"}</p>
             </div>
-            <button onClick={() => router.push("/oficios/novo")} style={{ background: "#F57C00", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 18px", fontSize: "13px", fontWeight: "700", fontFamily: "Arial, sans-serif", cursor: "pointer" }}>
-              + Novo Ofício
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => baixarCsv(filtrados)} disabled={!filtrados.length} className="bg-white/15 text-white border border-white/30 rounded-md px-4 py-2 text-[13px] font-semibold hover:bg-white/25 disabled:opacity-40">Exportar CSV</button>
+              <button onClick={() => router.push("/oficios/novo")} className="bg-[#F57C00] text-white rounded-md px-4 py-2 text-[13px] font-bold">+ Novo Ofício</button>
+            </div>
           </div>
 
-          {/* Filtros */}
-          <div style={{ padding: "16px 24px", borderBottom: "1px solid #EEF0F4", display: "flex", gap: "12px", flexWrap: "wrap" as const, background: "#FAFBFC" }}>
-            <input
-              type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por número, assunto ou destinatário..."
-              style={{ flex: 1, minWidth: "200px", border: "1.5px solid #DDE3EC", borderRadius: "6px", padding: "8px 12px", fontSize: "13px", fontFamily: "Arial, sans-serif", outline: "none" }}
-            />
-            <select value={filtroAno} onChange={(e) => setFiltroAno(e.target.value)} style={{ border: "1.5px solid #DDE3EC", borderRadius: "6px", padding: "8px 12px", fontSize: "13px", fontFamily: "Arial, sans-serif", outline: "none", background: "#fff" }}>
+          <div className="flex flex-wrap gap-3 px-6 py-4 border-b border-[#EEF0F4] bg-[#FAFBFC]">
+            <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por número, assunto, destinatário ou protocolo..." className={`${input} flex-1 min-w-[220px]`} />
+            <select value={filtroAno} onChange={(e) => setFiltroAno(e.target.value)} className={input}>
               <option value="">Todos os anos</option>
               {anos.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} style={{ border: "1.5px solid #DDE3EC", borderRadius: "6px", padding: "8px 12px", fontSize: "13px", fontFamily: "Arial, sans-serif", outline: "none", background: "#fff" }}>
+            <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} className={input}>
               <option value="">Todos os status</option>
-              {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
             {(busca || filtroAno || filtroStatus) && (
-              <button onClick={() => { setBusca(""); setFiltroAno(""); setFiltroStatus(""); }} style={{ background: "none", border: "1.5px solid #DDE3EC", borderRadius: "6px", padding: "8px 12px", fontSize: "12px", fontFamily: "Arial, sans-serif", cursor: "pointer", color: "#666" }}>
-                Limpar
-              </button>
+              <button onClick={() => { setBusca(""); setFiltroAno(""); setFiltroStatus(""); }} className={`${input} text-xs text-gray-600`}>Limpar</button>
             )}
           </div>
 
-          {/* Tabela */}
+          {erro && <p className="px-6 py-3 text-sm text-red-600 bg-red-50">{erro}</p>}
+
           {carregando ? (
-            <div style={{ textAlign: "center", padding: "64px", color: "#AAA", fontFamily: "Arial, sans-serif" }}>Carregando...</div>
+            <div className="text-center py-16 text-gray-400">Carregando...</div>
           ) : filtrados.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "64px", color: "#AAA", fontFamily: "Arial, sans-serif" }}>Nenhum ofício encontrado.</div>
+            <div className="text-center py-16 text-gray-400">Nenhum ofício encontrado.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", fontFamily: "Arial, sans-serif" }}>
-              <thead>
-                <tr style={{ background: "#F5F7FA", borderBottom: "1px solid #EEF0F4" }}>
-                  <th style={{ textAlign: "left", padding: "12px 24px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Número</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Data</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Destinatário</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assunto</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Protocolo</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Status</th>
-                  <th style={{ textAlign: "right", padding: "12px 24px", fontWeight: "600", color: "#0D3B7A", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtrados.map((oficio, i) => {
-                  const st = STATUS_STYLES[oficio.status] || STATUS_STYLES.rascunho;
-                  return (
-                    <tr key={oficio.id} style={{ borderBottom: "1px solid #EEF0F4", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                      <td style={{ padding: "12px 24px", fontFamily: "monospace", fontWeight: "600", color: "#0D3B7A" }}>{oficio.numero}</td>
-                      <td style={{ padding: "12px 16px", color: "#666", whiteSpace: "nowrap" as const }}>{formatarData(oficio.criadoEm)}</td>
-                      <td style={{ padding: "12px 16px", color: "#333" }}>{oficio.destinatario ? `${oficio.destinatario.codigo} - ${oficio.destinatario.nome}` : "—"}</td>
-                      <td style={{ padding: "12px 16px", color: "#333", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{oficio.assunto}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        {oficio.protocolo ? (
-                          <span style={{ fontFamily: "monospace", color: "#333" }}>{oficio.protocolo}</span>
-                        ) : (
-                          <button onClick={() => { setOficioSelecionado(oficio); setNovoProtocolo(""); setModalProtocolo(true); }} style={{ background: "none", border: "none", color: "#1565C0", fontSize: "12px", cursor: "pointer", padding: 0, fontFamily: "Arial, sans-serif" }}>
-                            + Lançar
-                          </button>
-                        )}
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ background: st.bg, color: st.color, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "600" }}>{st.label}</span>
-                      </td>
-                      <td style={{ padding: "12px 24px" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-                          <button onClick={() => router.push(`/oficios/pdf/${oficio.id}`)} style={{ background: "#E3F0FF", color: "#1565C0", border: "none", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>PDF</button>
-                          <button onClick={() => router.push(`/oficios/novo?editar=${oficio.id}`)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Editar</button>
-                          {oficio.protocolo && (
-                            <button onClick={() => { setOficioSelecionado(oficio); setNovoProtocolo(oficio.protocolo || ""); setModalProtocolo(true); }} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Protocolo</button>
-                          )}
-                          <button onClick={() => { setOficioParaExcluir(oficio); setModalExclusao(true); }} style={{ background: "#FFEBEE", color: "#C62828", border: "none", borderRadius: "4px", padding: "5px 10px", fontSize: "11px", fontWeight: "600", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Excluir</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="bg-[#F5F7FA] border-b border-[#EEF0F4] text-left text-[11px] uppercase tracking-wide text-[#0D3B7A]">
+                    {["Número", "Data", "Destinatário", "Assunto", "Protocolo", "Status", "Ações"].map((h, i) => (
+                      <th key={h} className={`py-3 px-4 font-semibold ${i === 6 ? "text-right" : ""}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visiveis.map((o, i) => {
+                    const st = STATUS[o.status] ?? STATUS.rascunho;
+                    const editavel = o.status === "rascunho" || o.status === "emitido";
+                    return (
+                      <tr key={o.id} className={`border-b border-[#EEF0F4] ${i % 2 ? "bg-[#FAFBFC]" : "bg-white"}`}>
+                        <td className="py-3 px-4 font-mono font-semibold text-[#0D3B7A] whitespace-nowrap">{rotuloNumero(o)}</td>
+                        <td className="py-3 px-4 text-gray-500 whitespace-nowrap">{dataDe(o)}</td>
+                        <td className="py-3 px-4 text-gray-800">{o.destinatario ? `${o.destinatario.codigo} - ${o.destinatario.nome}` : "—"}</td>
+                        <td className="py-3 px-4 text-gray-800 max-w-[260px] truncate" title={o.assunto}>{o.assunto}</td>
+                        <td className="py-3 px-4">
+                          {o.protocolo ? <span className="font-mono">{o.protocolo}</span>
+                            : (o.status === "emitido") ? <button onClick={() => { setProtocolando(o); setProtocolo(""); }} className="text-[#1565C0] text-xs hover:underline">+ Lançar</button>
+                            : "—"}
+                        </td>
+                        <td className="py-3 px-4"><span className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold" style={{ background: st.bg, color: st.color }}>{st.label}</span></td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-end gap-1.5">
+                            <button onClick={() => router.push(`/oficios/pdf/${o.id}`)} className={`${btn} bg-[#E3F0FF] text-[#1565C0]`}>Ver / Imprimir</button>
+                            {editavel && <button onClick={() => router.push(`/oficios/novo?editar=${o.id}`)} className={`${btn} bg-[#F5F7FA] text-gray-700 border !border-[#DDE3EC]`}>Editar</button>}
+                            <button disabled={ocupado} onClick={() => duplicar(o)} className={`${btn} bg-[#F5F7FA] text-gray-700 border !border-[#DDE3EC]`}>Duplicar</button>
+                            {o.protocolo && o.status === "protocolado" && <button onClick={() => { setProtocolando(o); setProtocolo(o.protocolo ?? ""); }} className={`${btn} bg-[#F5F7FA] text-gray-700 border !border-[#DDE3EC]`}>Protocolo</button>}
+                            {o.status === "rascunho" && <button onClick={() => setExcluindo(o)} className={`${btn} bg-[#FFEBEE] text-[#C62828]`}>Excluir</button>}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between px-6 py-3 text-xs text-gray-500 border-t border-[#EEF0F4]">
+              <span>Página {pagina} de {totalPaginas}</span>
+              <div className="flex gap-2">
+                <button disabled={pagina === 1} onClick={() => setPagina((p) => p - 1)} className={`${input} disabled:opacity-40`}>Anterior</button>
+                <button disabled={pagina === totalPaginas} onClick={() => setPagina((p) => p + 1)} className={`${input} disabled:opacity-40`}>Próxima</button>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal Protocolo */}
-      {modalProtocolo && oficioSelecionado && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ background: "#fff", borderRadius: "10px", padding: "28px", width: "100%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ borderBottom: "3px solid #F57C00", paddingBottom: "12px", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "16px", fontFamily: "Georgia, serif", fontWeight: "700", color: "#0D3B7A", margin: 0 }}>Lançar Protocolo</h2>
-              <p style={{ fontSize: "12px", color: "#888", fontFamily: "Arial, sans-serif", margin: "4px 0 0" }}>Ofício: <strong>{oficioSelecionado.numero}</strong></p>
-            </div>
-            <input type="text" value={novoProtocolo} onChange={(e) => setNovoProtocolo(e.target.value)} placeholder="Número do protocolo" autoFocus style={{ width: "100%", border: "1.5px solid #DDE3EC", borderRadius: "6px", padding: "10px 12px", fontSize: "13px", fontFamily: "Arial, sans-serif", outline: "none", boxSizing: "border-box", marginBottom: "16px" }} />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button onClick={() => setModalProtocolo(false)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Cancelar</button>
-              <button onClick={salvarProtocolo} disabled={salvandoProtocolo} style={{ background: "linear-gradient(135deg, #0D3B7A, #1565C0)", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: "700", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>{salvandoProtocolo ? "Salvando..." : "Salvar"}</button>
-            </div>
-          </div>
-        </div>
+      {protocolando && (
+        <Modal titulo="Lançar Protocolo" sub={<>Ofício: <strong>{protocolando.numero}</strong></>} onClose={() => setProtocolando(null)}
+          acao={<button onClick={salvarProtocolo} disabled={ocupado} className="rounded-md px-4 py-2 text-[13px] font-bold text-white bg-[#1565C0] disabled:opacity-50">Salvar</button>}>
+          <input autoFocus value={protocolo} onChange={(e) => setProtocolo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && salvarProtocolo()} placeholder="Número do protocolo (vazio remove)" className={`${input} w-full`} />
+        </Modal>
       )}
+      {excluindo && (
+        <Modal titulo="Excluir rascunho" sub={<>Deseja excluir o <strong>{rotuloNumero(excluindo)}</strong>? Não poderá ser desfeito.</>} onClose={() => setExcluindo(null)}
+          acao={<button onClick={excluir} disabled={ocupado} className="rounded-md px-4 py-2 text-[13px] font-bold text-white bg-[#C62828] disabled:opacity-50">Excluir</button>} />
+      )}
+    </div>
+  );
+}
 
-      {/* Modal Exclusão */}
-      {modalExclusao && oficioParaExcluir && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div style={{ background: "#fff", borderRadius: "10px", padding: "28px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <h2 style={{ fontSize: "16px", fontFamily: "Georgia, serif", fontWeight: "700", color: "#C62828", margin: "0 0 8px" }}>Excluir Ofício</h2>
-            <p style={{ fontSize: "13px", color: "#555", fontFamily: "Arial, sans-serif", margin: "0 0 20px" }}>Deseja excluir o ofício <strong>{oficioParaExcluir.numero}</strong>? Esta ação não pode ser desfeita.</p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button onClick={() => setModalExclusao(false)} style={{ background: "#F5F7FA", color: "#444", border: "1px solid #DDE3EC", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>Cancelar</button>
-              <button onClick={excluir} disabled={excluindo} style={{ background: "#C62828", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: "700", cursor: "pointer", fontFamily: "Arial, sans-serif" }}>{excluindo ? "Excluindo..." : "Excluir"}</button>
-            </div>
-          </div>
+function Modal({ titulo, sub, children, acao, onClose }: { titulo: string; sub?: React.ReactNode; children?: React.ReactNode; acao: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-[10px] p-7 w-full max-w-[420px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="border-b-[3px] border-[#F57C00] pb-3 mb-5">
+          <h2 className="text-base font-bold text-[#0D3B7A]" style={{ fontFamily: "Georgia, serif" }}>{titulo}</h2>
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
         </div>
-      )}
+        {children && <div className="mb-5">{children}</div>}
+        <div className="flex justify-end gap-2.5">
+          <button onClick={onClose} className="rounded-md px-4 py-2 text-[13px] border border-[#DDE3EC] bg-[#F5F7FA] text-gray-700">Cancelar</button>
+          {acao}
+        </div>
+      </div>
     </div>
   );
 }
