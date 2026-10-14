@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de Ofícios — SCFC
 
-## Getting Started
+Criação, controle e impressão de ofícios da Superintendência de Controle de Frotas e Combustível
+(Prefeitura de Rondonópolis). Next.js 14 · Drizzle + Neon (Postgres) · NextAuth · TinyMCE.
 
-First, run the development server:
+## Rodando
 
 ```bash
+cp .env.example .env.local     # preencha DATABASE_URL, NEXTAUTH_SECRET, NEXT_PUBLIC_TINYMCE_API_KEY...
+npm install
+npm run db:push                # cria/atualiza as tabelas
+npm run db:backfill            # só se já existem ofícios de antes (preenche a coluna "sequencia")
+npm run db:seed                # usuário admin, destinatários, modelos e classificação orçamentária
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Testes: `npm test` (lógica) · `npm run test:db` (numeração contra um Postgres **local**, ver `tests/numeracao-db.test.ts`) · `npm run typecheck`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Como funciona
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Ciclo de vida do ofício**
 
-## Learn More
+| Status | Pode editar texto | Pode excluir | Observação |
+|---|---|---|---|
+| `rascunho` | sim (salva sozinho a cada 45 s) | sim | **não tem número** |
+| `emitido` | sim (número preservado) | não — cancelar | número atribuído na emissão |
+| `protocolado` | não | não — cancelar | lançar protocolo move para este status |
+| `cancelado` | não | não | exige motivo; o número **nunca** é reaproveitado |
 
-To learn more about Next.js, take a look at the following resources:
+**Numeração** — `NNN/AAAA/SCFC/ADMINISTRAÇÃO`, atribuída no ato de **emitir** (rascunhos e exclusões não deixam
+buracos na sequência). Atribuição feita em uma única instrução SQL com índice único `(ano, sequencia)` e
+nova tentativa em caso de conflito: duas pessoas emitindo ao mesmo tempo nunca recebem o mesmo número.
+O último número do sistema anterior vem de `OFICIO_ULTIMO_NUMERO_LEGADO` e vale só para `OFICIO_ANO_LEGADO`;
+nos demais anos a contagem começa em 001.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Layout / ABNT** — todas as medidas ficam em `lib/layout.ts` (A4; margens esquerda 3 cm e direita 2 cm; fonte
+Arial 12, entrelinha 1,5, texto justificado; papel timbrado de 47 mm no topo e 28 mm no rodapé, repetidos em
+**todas** as páginas). Editor, pré-visualização e impressão usam o mesmo HTML/CSS (`lib/oficio-html.ts`),
+então o que se vê é o que sai. "Página X de Y" é impresso a partir da 2ª página (Chrome/Edge 131+).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Segurança** — páginas protegidas no servidor (`middleware.ts`); senhas com bcrypt (hashes MD5 antigos são
+migrados automaticamente no primeiro login); Google só entra com e-mail já cadastrado ou em
+`ALLOWED_EMAIL_DOMAINS`/`ALLOWED_EMAILS`; HTML dos ofícios é sanitizado ao salvar e ao ler.
 
-## Deploy on Vercel
+## Estrutura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+lib/layout.ts         medidas A4/ABNT (fonte única)
+lib/oficio-html.ts    HTML de impressão e bloco de abertura (usado por editor, preview e impressão)
+lib/numeracao*.ts     formato do número e emissão atômica
+lib/sanitize.ts       sanitização do HTML do TinyMCE
+lib/auth.ts           NextAuth (bcrypt, Google restrito)
+components/OficioEditor.tsx   TinyMCE com folha A4
+components/PrintPreview.tsx   pré-visualização + impressão por iframe (sem pop-up)
+app/api/oficios/[id]/{emitir,cancelar,duplicar}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Impressão
+
+Use **Imprimir / Salvar PDF** na tela do ofício; na janela do navegador deixe margens em *Nenhuma* e marque
+*Gráficos de segundo plano*. Para conferir o resultado sem o sistema: `npx tsx scripts/gerar-exemplo.ts`.
